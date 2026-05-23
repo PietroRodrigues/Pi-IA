@@ -1,0 +1,14 @@
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\bin\Debug\net10.0\Pi.App.exe
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\bin\Debug\net10.0\Pi.App.deps.json
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\bin\Debug\net10.0\Pi.App.runtimeconfig.json
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\bin\Debug\net10.0\Pi.App.dll
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\bin\Debug\net10.0\Pi.App.pdb
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\Pi.App.GeneratedMSBuildEditorConfig.editorconfig
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\Pi.App.AssemblyInfoInputs.cache
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\Pi.App.AssemblyInfo.cs
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\Pi.App.csproj.CoreCompileInputs.cache
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\Pi.App.dll
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\refint\Pi.App.dll
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\Pi.App.pdb
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\Pi.App.genruntimeconfig.cache
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\ref\Pi.App.dll
