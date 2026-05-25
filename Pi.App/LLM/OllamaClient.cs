@@ -43,9 +43,6 @@ namespace Pi.App.LLM
             var responseText =
                 await response.Content.ReadAsStringAsync();
 
-            Console.WriteLine("\nDEBUG:");
-            Console.WriteLine(responseText);
-
             if (!response.IsSuccessStatusCode)
             {
                 return $"Erro: {response.StatusCode}";

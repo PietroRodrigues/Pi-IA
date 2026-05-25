@@ -12,3 +12,4 @@ E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\refint\Pi.App.dll
 E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\Pi.App.pdb
 E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\Pi.App.genruntimeconfig.cache
 E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\ref\Pi.App.dll
+E:\MeusProjetosRepositorio\IA\Pi\Pi.App\obj\Debug\net10.0\Pi.App.sourcelink.json
