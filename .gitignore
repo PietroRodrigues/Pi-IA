@@ -36,6 +36,7 @@ packages/
 .env
 
 # Local AI Models
+Pi.App/VoiceModels/*.bin
 VoiceModels/*.bin
 Models/*.bin
 
