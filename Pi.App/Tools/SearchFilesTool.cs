@@ -12,12 +12,19 @@ namespace Pi.App.Tools
             @"D:\Gearbox"
         };
 
+        public bool CanHandle(string input)
+        {
+            return input.StartsWith("procure", StringComparison.OrdinalIgnoreCase);
+        }
+
         public async Task<string> Execute(string input)
         {
+            var searchTerm = input.Replace("procure", "", StringComparison.OrdinalIgnoreCase).Trim();
+
             return await Task.Run(() =>
             {
                 Console.WriteLine(
-                    $"\nDEBUG: procurando '{input}'"
+                    $"\nDEBUG: procurando '{searchTerm}'"
                 );
 
                 var foundFiles = new List<string>();
@@ -51,7 +58,7 @@ namespace Pi.App.Tools
                             var fileName = Path.GetFileName(file);
 
                             if(fileName.Contains(
-                                input,
+                                searchTerm,
                                 StringComparison.OrdinalIgnoreCase))
                             {
                                 foundFiles.Add(file);

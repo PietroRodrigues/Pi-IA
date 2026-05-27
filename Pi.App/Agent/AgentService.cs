@@ -8,47 +8,53 @@ namespace Pi.App.Agent
     {
         private readonly OllamaClient _ollama;
 
-        private readonly List<ITool> _tools;
+        private readonly List<String> _conversationHistory = new();
+
+        private readonly ToolRouter _toolRouter;
 
         public AgentService()
         {
             _ollama = new OllamaClient();
-
-            _tools = [
-                new SearchFilesTool()
-            ];
+            _toolRouter = new ToolRouter();
         }
 
         public async Task<string> AskAsync(string input)
         {
-            input = input.ToLower();
+           var toolResponse = await _toolRouter.TryExecuteAsync(input);
 
-            //Procura arqivos
-            if (input.StartsWith("procure"))
-            {
-                var searchTerm = input.Replace("procure", "").Trim();
+            if (toolResponse != null)
+                return toolResponse;
 
-                var tool = _tools.FirstOrDefault(x => x.Name == ToolNames.SearchFiles);
+            var history = string.Join("\n", _conversationHistory);
 
-                if (tool != null)
-                    return await tool.Execute(searchTerm);
-            }
-
-            //fallback para IA
-
-            var prompt = BuildPrompt(input);
+            var prompt = BuildPrompt(history, input);
 
             var response = await _ollama.SendMessageAsync(prompt);
+
+            _conversationHistory.Add($"Usuário: {input}");
+            _conversationHistory.Add($"Pi: {response}");
+
+            if(_conversationHistory.Count > 20)
+            {
+                _conversationHistory.RemoveRange(0, _conversationHistory.Count - 20);
+            }
 
             return response;
         }
 
-        private string BuildPrompt(string input)
+        private string BuildPrompt(string history, string input)
         {
             return $"""
-            Você é a Pi, um assistente local.
-            Responda de forma objetiva e natural.
-            Usuário: {input}
+
+            {AgentConfig.SystemPrompt}
+
+            Histórico da conversa:
+            {history}
+
+            Usuário:
+            {input}
+
+            Pi:
             """;
         }
 

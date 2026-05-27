@@ -1,0 +1,49 @@
+# Build
+bin/
+obj/
+
+# VS Code
+.vscode/
+
+# Visual Studio
+.vs/
+
+# Rider
+.idea/
+
+# User files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Logs
+*.log
+
+# Temp files
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# NuGet
+packages/
+*.nupkg
+
+# Environment
+.env
+
+# Local AI Models
+VoiceModels/*.bin
+Models/*.bin
+
+# Audio test files
+recording.wav
+*.mp3
+*.wav
+
+# Runtime cache
+cache/
+temp/
