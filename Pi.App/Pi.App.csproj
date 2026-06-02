@@ -13,4 +13,10 @@
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="VoiceModels\ggml-base.bin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
