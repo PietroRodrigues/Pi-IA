@@ -9,13 +9,18 @@ Console.WriteLine("Digite 'sair' para encerrar.");
 
 var speech = new SpeechToTextService();
 
-speech.Teste();
-
 AudioRecorder recorder = new AudioRecorder();
 
 string audioPath = await recorder.RecordAsync();
 
 Console.WriteLine($"Áudio gravado em: {audioPath}");
+
+string recognizedText = await speech.TranscribeAsync(audioPath);
+
+Console.WriteLine();
+Console.WriteLine("Texto reconhecido:");
+Console.WriteLine(recognizedText);
+Console.WriteLine();
 
 while (true)
 {

@@ -20,7 +20,7 @@ namespace Pi.App.Voice
             waveIn.DataAvailable += (object? sender, WaveInEventArgs e) =>
             {
                 writer.Write(e.Buffer, 0, e.BytesRecorded);
-            };
+            };            
 
             Console.WriteLine("Gravando por 5 segundos...");
 
