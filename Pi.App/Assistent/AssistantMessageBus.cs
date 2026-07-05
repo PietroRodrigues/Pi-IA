@@ -1,19 +1,28 @@
-using System.Collections.Concurrent;
+using System.Threading.Channels;
 
 namespace Pi.App.Assistant
 {
     public class AssistantMessageBus
     {
-        private readonly ConcurrentQueue<AssistantMessage> _messages = new();
+        private readonly Channel<AssistantMessage> _channel;
 
-        public void Publish(AssistantMessage message)
+        public AssistantMessageBus()
         {
-            _messages.Enqueue(message);
+            _channel = Channel.CreateUnbounded<AssistantMessage>(new UnboundedChannelOptions
+            {
+                SingleReader = true,
+                SingleWriter = false
+            });
         }
 
-        public bool TryRead(out AssistantMessage? message)
+         public async Task PublishAsync(AssistantMessage message)
         {
-            return _messages.TryDequeue(out message);
+            await _channel.Writer.WriteAsync(message);
+        }
+
+        public async Task<AssistantMessage> ReadAsync()
+        {
+            return await _channel.Reader.ReadAsync();
         }
     }
 }
