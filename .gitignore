@@ -1,35 +1,80 @@
-# Build artifacts (any depth)
+# ============================================================
+# Build / artefatos de compilação (qualquer profundidade)
+# ============================================================
 [Bb]in/
 [Oo]bj/
 artifacts/
+*.binlog
+
+# Resultados de teste e cobertura
+[Tt]est[Rr]esults/
+[Cc]overage/
+*.trx
+*.coverage
+*.coveragexml
+*.opencover.xml
+
+# ============================================================
+# IDEs / editores
+# ============================================================
+.vs/
+.vscode/
+.idea/
 *.user
 *.suo
 *.userosscache
+*.userprefs
 *.sln.docstates
+*.sln.DotSettings.user
+*~
+*.swp
 
-# IDEs
-.vscode/
-.vs/
-.idea/
-
-# Logs and temp
+# ============================================================
+# Logs, cache e temporários
+# ============================================================
 *.log
 *.tmp
 *.temp
 cache/
 temp/
 
-# OS
+# ============================================================
+# Sistema operacional
+# ============================================================
 .DS_Store
 Thumbs.db
 
+# ============================================================
 # NuGet
+# ============================================================
 packages/
 *.nupkg
+*.snupkg
 
-# Environment / secrets
+# ============================================================
+# SEGREDOS — nunca versionar (prioridade máxima)
+# ============================================================
 .env
+.env.*
+!.env.example
+appsettings.local.json
 appsettings.*.local.json
+secrets.json
+*.secrets.json
+*.pfx
+*.snk
+*.pem
+*.key
+id_rsa*
 
-# Local AI models (binaries must never be committed)
+# ============================================================
+# Modelos locais e áudio — binários nunca versionados
+# ============================================================
 **/Models/*.bin
+**/VoiceModels/
+*.bin
+*.wav
+*.mp3
+
+# Preferências locais do Pi.CLI (perfil do usuário)
+.pi-ia/
