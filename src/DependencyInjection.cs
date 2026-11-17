@@ -11,6 +11,7 @@ using Pi.Options;
 using Pi.Services;
 using Pi.Tools;
 using Pi.UseCases;
+using Pi.Workers;
 
 namespace Pi;
 
@@ -30,6 +31,7 @@ public static class DependencyInjection
         services.AddTransient<ToolRouter>();
         services.AddTransient<AgentService>();
         services.AddTransient<ProcessMessageUseCase>();
+        services.AddSingleton<ChatPresenter>();
 
         return services;
     }
@@ -40,6 +42,11 @@ public static class DependencyInjection
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+
+        services.AddOptions<AssistantOptions>()
+            .Bind(configuration.GetSection(AssistantOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
         services.AddOptions<OllamaOptions>()
             .Bind(configuration.GetSection(OllamaOptions.SectionName))

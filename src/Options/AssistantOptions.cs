@@ -30,4 +30,10 @@ public sealed class AssistantOptions
 
     [MinLength(1)]
     public string[] ExitKeywords { get; set; } = ["sair", "exit"];
+
+    /// <summary>
+    /// Rótulo do agente exibido no chat. Hoje é apenas informativo.
+    /// </summary>
+    [Required(AllowEmptyStrings = false)]
+    public string AgentName { get; set; } = "geral";
 }

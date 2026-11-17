@@ -32,6 +32,8 @@ public sealed class OllamaClient : ILLMClient
         _httpClient.Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds);
     }
 
+    public string ModelName => _options.Model;
+
     public async Task<string> SendAsync(string prompt, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(prompt);

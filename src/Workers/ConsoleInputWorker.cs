@@ -14,29 +14,34 @@ public sealed class ConsoleInputWorker : BackgroundService
 {
     private readonly IMessageBus _messageBus;
     private readonly AssistantOptions _options;
+    private readonly ChatPresenter _presenter;
     private readonly IHostApplicationLifetime _lifetime;
     private readonly ILogger<ConsoleInputWorker> _logger;
 
     public ConsoleInputWorker(
         IMessageBus messageBus,
         IOptions<AssistantOptions> options,
+        ChatPresenter presenter,
         IHostApplicationLifetime lifetime,
         ILogger<ConsoleInputWorker> logger)
     {
         ArgumentNullException.ThrowIfNull(messageBus);
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(presenter);
         ArgumentNullException.ThrowIfNull(lifetime);
         ArgumentNullException.ThrowIfNull(logger);
 
         _messageBus = messageBus;
         _options = options.Value;
+        _presenter = presenter;
         _lifetime = lifetime;
         _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Pi iniciado. Digite uma mensagem ou use Ctrl+C para sair.");
+        await Console.Out.WriteLineAsync(_presenter.Welcome());
+        _logger.LogDebug("Chat iniciado. Aguardando mensagens.");
 
         while (!stoppingToken.IsCancellationRequested)
         {

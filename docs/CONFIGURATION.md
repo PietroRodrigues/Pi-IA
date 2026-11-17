@@ -22,9 +22,12 @@ O auto-start só atua quando `BaseUrl` aponta para `localhost`, `127.0.0.1` ou `
 
 | Chave | Padrão | Descrição |
 |---|---|---|
+| `AgentName` | `geral` | Rótulo do agente exibido no chat (informativo; agentes reais virão depois) |
 | `MaxHistoryMessages` | `20` | Máximo de mensagens mantidas no histórico |
 | `ExitKeywords` | `["sair", "exit"]` | Palavras que encerram a aplicação |
 | `SystemPrompt` | ver arquivo | Prompt base do assistente |
+
+O chat exibe no banner o modelo em uso (`Ollama:Model`) e o agente (`Assistant:AgentName`), e mostra um indicador "pensando" antes de cada resposta. Em terminal interativo o indicador é animado; com a saída redirecionada ele vira uma linha estática, sem códigos de controle.
 
 ### `Tools`
 
@@ -46,7 +49,7 @@ Exemplo:
 
 ### `Logging`
 
-`Console.LogToStandardErrorThreshold` está em `Trace` para que **todos os logs** vão para stderr, preservando o stdout para as respostas (`Pi: ...`).
+`Console.LogToStandardErrorThreshold` está em `Trace` para que **todos os logs** vão para stderr. O stdout fica reservado à interface do chat (banner, "pensando" e respostas).
 
 ## Validação
 
