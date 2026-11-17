@@ -1,10 +1,9 @@
-using Pi.Models;
 using Pi.Services;
 
 namespace Pi.UseCases;
 
 /// <summary>
-/// Processa uma mensagem recebida do barramento e devolve a resposta do assistente.
+/// Processa uma mensagem digitada e devolve a resposta do assistente.
 /// </summary>
 public sealed class ProcessMessageUseCase
 {
@@ -16,9 +15,9 @@ public sealed class ProcessMessageUseCase
         _agent = agent;
     }
 
-    public Task<string> ExecuteAsync(AssistantMessage message, CancellationToken cancellationToken = default)
+    public Task<string> ExecuteAsync(string message, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(message);
-        return _agent.AskAsync(message.Text, cancellationToken);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        return _agent.AskAsync(message, cancellationToken);
     }
 }

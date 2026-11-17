@@ -7,11 +7,11 @@ O Pi também cuida do servidor: se o Ollama não estiver aberto, ele mesmo inici
 ## O que o projeto entrega hoje
 
 - Conversa por texto com histórico em memória (limite padrão: 20 mensagens).
-- Chat com feedback amigável: mostra o modelo e o agente em uso e um indicador de "pensando" enquanto a resposta é gerada.
+- Interface de chat no terminal com Spectre.Console: painéis, cores, prompt estilizado e indicador de "pensando", mostrando modelo e agente em uso.
 - Modelo local via Ollama (`/api/generate`), configurável — padrão `qwen2.5:3b`.
 - Inicialização automática do servidor Ollama local, com espera e mensagens claras em caso de falha.
 - Ferramentas extensíveis: busca em arquivos restrita a pastas autorizadas e abertura de aplicativos.
-- Respostas no stdout e logs no stderr — fácil de usar em pipelines e redirecionamentos.
+- Respostas no stdout e logs no stderr. Com saída redirecionada, a interface cai para texto simples sem códigos ANSI — fácil de usar em pipelines e arquivos.
 - Funciona sem internet depois que o modelo está baixado.
 
 **Fora de escopo:** voz, áudio, modelos embarcados e coleta de dados. O projeto é estritamente textual e local.

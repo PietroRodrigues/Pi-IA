@@ -3,15 +3,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Pi.Abstracts.AI;
-using Pi.Abstracts.Messaging;
 using Pi.Abstracts.Tools;
-using Pi.Messaging;
 using Pi.Ollama;
 using Pi.Options;
 using Pi.Services;
 using Pi.Tools;
+using Pi.UI;
 using Pi.UseCases;
 using Pi.Workers;
+using Spectre.Console;
 
 namespace Pi;
 
@@ -31,7 +31,13 @@ public static class DependencyInjection
         services.AddTransient<ToolRouter>();
         services.AddTransient<AgentService>();
         services.AddTransient<ProcessMessageUseCase>();
-        services.AddSingleton<ChatPresenter>();
+
+        // Apresentação separada da lógica: a sessão só conhece IChatView.
+        services.AddSingleton<IAnsiConsole>(_ => AnsiConsole.Console);
+        services.AddSingleton<IChatView, SpectreChatView>();
+
+        services.AddSingleton<ChatSession>();
+        services.AddTransient<ChatSessionWorker>();
 
         return services;
     }
@@ -65,8 +71,6 @@ public static class DependencyInjection
         services.AddHttpClient(nameof(OllamaServerBootstrapper));
         services.AddSingleton<IOllamaProcessLauncher, OllamaProcessLauncher>();
         services.AddSingleton<IHostedService, OllamaServerBootstrapper>();
-
-        services.AddSingleton<IMessageBus, ChannelMessageBus>();
 
         services.AddTransient<ITool, SearchFilesTool>();
         services.AddTransient<ITool, OpenAppTool>();

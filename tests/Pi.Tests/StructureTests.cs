@@ -13,7 +13,7 @@ public sealed class StructureTests
     private static readonly string[] ConcreteNamespaces =
     [
         "Pi.Ollama",
-        "Pi.Messaging",
+        "Pi.UI",
         "Pi.Tools",
         "Pi.Workers",
         "Microsoft.Extensions"
@@ -34,7 +34,7 @@ public sealed class StructureTests
     [Fact]
     public void Conversation_NaoDeveReferenciarOutrosModulos()
     {
-        string[] proibidos = ["Pi.Abstracts", .. ConcreteNamespaces, "Pi.Services", "Pi.UseCases", "Pi.Models", "Pi.Options"];
+        string[] proibidos = ["Pi.Abstracts", .. ConcreteNamespaces, "Pi.Services", "Pi.UseCases", "Pi.Options"];
         var arquivos = ArquivosDe("Conversation");
 
         var violacoes = violacoesEm(arquivos, proibidos);

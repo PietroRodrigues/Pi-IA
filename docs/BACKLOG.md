@@ -60,9 +60,10 @@ O projeto atual já entrega a base: monólito de um assembly com estrutura plana
 
 ### Etapa 0 — Fundação `[x]`
 
-- [x] Estrutura plana em um único assembly (`src/`): módulos `Abstracts`, `Conversation`, `Models`, `Options`, `Services`, `UseCases`, `Ollama`, `Messaging`, `Tools`, `Workers`; saída centralizada em `artifacts/`
+- [x] Estrutura plana em um único assembly (`src/`): módulos `Abstracts`, `Conversation`, `Options`, `Services`, `UseCases`, `Ollama`, `UI`, `Tools`, `Workers`; saída centralizada em `artifacts/`
 - [x] DI, Options Pattern com validação na subida, `IHttpClientFactory`
-- [x] `IMessageBus` com `System.Threading.Channels`, workers com `CancellationToken`
+- [x] Workers com `CancellationToken` e loop sequencial de chat (o antigo `IMessageBus` foi removido na evolução da interface)
+- [x] Interface de chat com Spectre.Console: painéis, cores, spinner e fallback sem ANSI (lógica em `Services/ChatSession`, apresentação em `src/UI/`)
 - [x] `ILLMClient` + `OllamaClient` (texto, `/api/generate`)
 - [x] `ITool`, `ToolRouter`, `SearchFilesTool`, `OpenAppTool` (placeholder)
 - [x] Histórico em memória com limite

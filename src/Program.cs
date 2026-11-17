@@ -13,10 +13,9 @@ var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// O OllamaServerBootstrapper vem de AddInfrastructure e é registrado antes destes
-// workers, então o console só começa a ler depois que o servidor local responde.
-builder.Services.AddHostedService<ConsoleInputWorker>();
-builder.Services.AddHostedService<MessageProcessingWorker>();
+// O OllamaServerBootstrapper vem de AddInfrastructure e é registrado antes do
+// worker do chat, então o console só começa a ler depois que o Ollama responde.
+builder.Services.AddHostedService<ChatSessionWorker>();
 
 var host = builder.Build();
 
