@@ -13,7 +13,7 @@ Transformar o Pi-IA de um assistente local de texto em uma **plataforma CLI para
 - **Extensão:** consumir IAs em **nuvem** por meio de **APIs OpenAI-compatible**.
 - **Operação:** comandos para escolher **modelos**, escolher **agentes** e **conectar provedores externos**.
 
-O projeto atual já entrega a base: Clean Architecture (4 projetos), DI, Options, fila em memória, `ILLMClient` abstraído, cliente Ollama, ferramentas por prefixo, 15 testes e CI. O backlog abaixo parte dessa fundação.
+O projeto atual já entrega a base: monólito de um assembly com estrutura plana (módulos por pasta/namespace), DI, Options, fila em memória, `ILLMClient` abstraído, cliente Ollama, ferramentas por prefixo, 18 testes e CI. O backlog abaixo parte dessa fundação.
 
 ### Interpretações assumidas
 
@@ -60,13 +60,13 @@ O projeto atual já entrega a base: Clean Architecture (4 projetos), DI, Options
 
 ### Etapa 0 — Fundação `[x]`
 
-- [x] Clean Architecture: `Pi.Domain`, `Pi.Application`, `Pi.Infrastructure`, `Pi.CLI`
+- [x] Estrutura plana em um único assembly (`src/`): módulos `Abstracts`, `Conversation`, `Models`, `Options`, `Services`, `UseCases`, `Ollama`, `Messaging`, `Tools`, `Workers`; saída centralizada em `artifacts/`
 - [x] DI, Options Pattern com validação na subida, `IHttpClientFactory`
 - [x] `IMessageBus` com `System.Threading.Channels`, workers com `CancellationToken`
 - [x] `ILLMClient` + `OllamaClient` (texto, `/api/generate`)
 - [x] `ITool`, `ToolRouter`, `SearchFilesTool`, `OpenAppTool` (placeholder)
 - [x] Histórico em memória com limite
-- [x] 15 testes unitários, CI, documentação
+- [x] 15 testes unitários + 3 testes de estrutura, CI, documentação
 - [x] Poda completa de voz/áudio
 
 ---

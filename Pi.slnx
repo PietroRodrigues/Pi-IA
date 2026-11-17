@@ -1,9 +1,4 @@
 <Solution>
-  <Project Path="src/Pi.Domain/Pi.Domain.csproj" />
-  <Project Path="src/Pi.Application/Pi.Application.csproj" />
-  <Project Path="src/Pi.Infrastructure/Pi.Infrastructure.csproj" />
-  <Project Path="src/Pi.CLI/Pi.CLI.csproj" />
-  <Project Path="tests/Pi.Domain.Tests/Pi.Domain.Tests.csproj" />
-  <Project Path="tests/Pi.Application.Tests/Pi.Application.Tests.csproj" />
-  <Project Path="tests/Pi.Infrastructure.Tests/Pi.Infrastructure.Tests.csproj" />
+  <Project Path="src/Pi.CLI.csproj" />
+  <Project Path="tests/Pi.Tests/Pi.Tests.csproj" />
 </Solution>

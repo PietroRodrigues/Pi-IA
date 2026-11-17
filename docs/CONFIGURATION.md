@@ -1,6 +1,6 @@
 # Configuração
 
-Arquivo principal: `src/Pi.CLI/appsettings.json`. Valores podem ser sobrescritos por variáveis de ambiente, por exemplo `Ollama__Model=llama3.2`.
+Arquivo principal: `src/appsettings.json`. Valores podem ser sobrescritos por variáveis de ambiente, por exemplo `Ollama__Model=llama3.2`.
 
 ## Seções
 

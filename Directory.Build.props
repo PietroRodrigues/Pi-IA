@@ -6,5 +6,12 @@
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+
+    <!--
+      Saída centralizada: nenhum bin/obj espalhado pelos projetos.
+      Tudo vai para <raiz>/artifacts/{bin,obj}/<projeto>/<config>/<framework>.
+      A pasta artifacts/ já é ignorada pelo .gitignore.
+    -->
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
   </PropertyGroup>
 </Project>
