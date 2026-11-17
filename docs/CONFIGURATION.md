@@ -8,9 +8,15 @@ Arquivo principal: `src/appsettings.json`. Valores podem ser sobrescritos por va
 
 | Chave | Padrão | Descrição |
 |---|---|---|
-| `BaseUrl` | `http://localhost:11434` | Endereço do servidor Ollama |
+| `BaseUrl` | `http://127.0.0.1:11434` | Endereço do servidor Ollama (IPv4 evita a resolução IPv6 de `localhost` no Windows) |
 | `Model` | `qwen2.5:3b` | Modelo usado em `/api/generate` |
 | `TimeoutSeconds` | `60` | Timeout da requisição HTTP |
+| `AutoStart` | `true` | Inicia `ollama serve` automaticamente se o servidor local não responder |
+| `StartupTimeoutSeconds` | `30` | Tempo máximo (1–300 s) esperando o servidor responder |
+| `ExecutablePath` | `""` | Caminho explícito do executável; vazio = PATH + locais de instalação conhecidos |
+| `StopOnExit` | `false` | Encerra o processo iniciado pelo Pi ao sair |
+
+O auto-start só atua quando `BaseUrl` aponta para `localhost`, `127.0.0.1` ou `::1`. Com uma URL remota ele é ignorado. Se o executável não for encontrado ou o servidor não responder, o Pi **avisa e continua** — os comandos seguem disponíveis e a primeira mensagem recebe um erro explicativo. O Pi não instala o Ollama nem baixa modelos: use `scripts/setup-ollama.ps1` para isso.
 
 ### `Assistant`
 

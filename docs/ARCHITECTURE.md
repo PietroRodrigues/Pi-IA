@@ -10,7 +10,7 @@ src/
 ├── Options/        (Pi.Options)
 ├── Services/       (Pi.Services)        ← orquestração
 ├── UseCases/       (Pi.UseCases)
-├── Ollama/         (Pi.Ollama)          ← cliente HTTP do Ollama
+├── Ollama/         (Pi.Ollama)          ← cliente HTTP + auto-start do servidor
 ├── Messaging/      (Pi.Messaging)       ← barramento em memória
 ├── Tools/          (Pi.Tools)           ← roteador + ferramentas
 ├── Workers/        (Pi.Workers)         ← host CLI
@@ -37,6 +37,12 @@ Entidades da conversa: `Conversation` (histórico limitado pelo próprio agregad
 
 ### `Ollama/`, `Messaging/` e `Tools/`
 Implementações concretas: `OllamaClient` (`POST /api/generate`), `OllamaResponseParser` (JSON/NDJSON), `ChannelMessageBus` (`System.Threading.Channels`), `SearchFilesTool`, `OpenAppTool` e `ToolNames`.
+
+Além disso, `Ollama/` contém o **auto-start do servidor local**:
+
+- `IOllamaProcessLauncher` / `OllamaProcessLauncher` localizam o executável (PATH, `%LOCALAPPDATA%\Programs\Ollama`, `/Applications/Ollama.app`, `/usr/local/bin`) e disparam `ollama serve` com `CreateNoWindow`.
+- `OllamaServerBootstrapper` sonda `GET /api/tags`, decide se precisa iniciar o processo e espera até a porta responder. Falhas são logadas sem derrubar o host; o processo iniciado é encerrado apenas se `StopOnExit=true`.
+- O bootstrapper é registrado em `AddInfrastructure()` **antes** dos workers, porque o host executa `IHostedService.StartAsync` em ordem. Assim o console só começa a ler depois da verificação.
 
 ### `Models/`, `Options/` e `DependencyInjection.cs`
 `AssistantMessage` é o DTO da fila. As classes de opções são validadas na subida (`ValidateOnStart`). O `DependencyInjection.cs` registra tudo em um único lugar, com `AddApplication()` e `AddInfrastructure()`.

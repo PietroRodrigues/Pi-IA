@@ -110,7 +110,8 @@ O projeto atual já entrega a base: monólito de um assembly com estrutura plana
 - [ ] Refatorar `ILLMClient` → contrato de provider com `chat` + `list models`
 - [ ] `OllamaClient`: usar `/api/chat` (papéis) em vez de `/api/generate`, mantendo compatibilidade
 - [ ] `/models refresh` — consultar modelos instalados no Ollama
-- [ ] Detecção de Ollama offline com mensagem clara
+- [x] Detecção de Ollama offline com mensagem clara
+- [x] Auto-start de `ollama serve` quando o servidor local não responde (config `Ollama:AutoStart`, `StartupTimeoutSeconds`, `ExecutablePath`, `StopOnExit`)
 - [ ] Provider `OpenAICompatibleLocal` (LM Studio, llama.cpp server, vLLM local)
 - [ ] Seleção de provider local na config (`Local__Provider = Ollama | OpenAICompatible`)
 

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -42,17 +43,37 @@ public sealed class OllamaClient : ILLMClient
             stream = false
         };
 
-        using var response = await _httpClient.PostAsJsonAsync("/api/generate", payload, cancellationToken);
-        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        string body;
 
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            _logger.LogError(
-                "Ollama retornou {StatusCode}: {Body}",
-                (int)response.StatusCode,
-                body);
+            using var response = await _httpClient.PostAsJsonAsync("/api/generate", payload, cancellationToken);
+            body = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            throw new InvalidOperationException($"Ollama retornou {(int)response.StatusCode}: {body}");
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError(
+                    "Ollama retornou {StatusCode}: {Body}",
+                    (int)response.StatusCode,
+                    body);
+
+                var dica = response.StatusCode == HttpStatusCode.NotFound &&
+                           body.Contains("not found", StringComparison.OrdinalIgnoreCase)
+                    ? " Modelo ausente: rode scripts/setup-ollama.ps1 antes de conversar."
+                    : string.Empty;
+
+                throw new InvalidOperationException(
+                    $"Ollama retornou {(int)response.StatusCode}: {body}.{dica}");
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Não foi possível conectar ao Ollama em {BaseUrl}", _options.BaseUrl);
+
+            throw new InvalidOperationException(
+                $"Não foi possível conectar ao Ollama em {_options.BaseUrl}. " +
+                "Instale em https://ollama.com/download ou configure Ollama:ExecutablePath.",
+                ex);
         }
 
         return OllamaResponseParser.Parse(body);

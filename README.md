@@ -32,7 +32,7 @@ módulos são fiscalizadas por `tests/Pi.Tests/StructureTests.cs`.
 ## Pré-requisitos
 
 - [.NET SDK 10.0](https://dotnet.microsoft.com/download) (fixado em `global.json`)
-- [Ollama](https://ollama.com/download) em execução em `http://localhost:11434`
+- [Ollama](https://ollama.com/download) **instalado** — o Pi inicia o servidor sozinho em `http://127.0.0.1:11434`
 
 ## Configuração rápida
 
@@ -49,6 +49,8 @@ módulos são fiscalizadas por `tests/Pi.Tests/StructureTests.cs`.
 ```powershell
 dotnet run --project src/Pi.CLI.csproj
 ```
+
+Na subida, o Pi verifica `Ollama:BaseUrl`. Se o servidor local não responder, ele executa `ollama serve` em segundo plano e aguarda até ficar pronto — não é preciso abrir o Ollama antes. Por padrão o servidor permanece rodando após sair (`Ollama:StopOnExit=false`). Se o Ollama não estiver instalado ou falhar, o Pi avisa e continua funcionando para comandos; detalhes em `docs/CONFIGURATION.md`.
 
 Digite uma mensagem e pressione Enter. Use `sair` ou `Ctrl+C` para encerrar.
 

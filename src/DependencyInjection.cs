@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Pi.Abstracts.AI;
 using Pi.Abstracts.Messaging;
@@ -51,6 +52,12 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddHttpClient<ILLMClient, OllamaClient>();
+
+        // Registrado antes dos workers: o host aguarda o StartAsync deste serviço
+        // antes de liberar a leitura do console.
+        services.AddHttpClient(nameof(OllamaServerBootstrapper));
+        services.AddSingleton<IOllamaProcessLauncher, OllamaProcessLauncher>();
+        services.AddSingleton<IHostedService, OllamaServerBootstrapper>();
 
         services.AddSingleton<IMessageBus, ChannelMessageBus>();
 
