@@ -50,5 +50,6 @@ dotnet test Pi.slnx
 
 ## Documentação
 
+- [Backlog](docs/BACKLOG.md)
 - [Arquitetura](docs/ARCHITECTURE.md)
 - [Configuração](docs/CONFIGURATION.md)
