@@ -21,7 +21,6 @@ public static class DependencyInjection
         services.AddTransient<ToolRouter>();
         services.AddTransient<AgentService>();
         services.AddTransient<ProcessMessageUseCase>();
-        services.AddTransient<CaptureVoiceUseCase>();
 
         return services;
     }

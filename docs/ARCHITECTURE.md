@@ -11,7 +11,7 @@ Pi.Domain  ←  Pi.Application  ←  Pi.Infrastructure
 ## Camadas
 
 ### Pi.Domain
-Contém os conceitos do negócio da conversa: `Conversation`, `ChatMessage`, `MessageRole` e `MessageSource`. Não referencia frameworks, bancos, HTTP ou dispositivos. O histórico é limitado pelo próprio agregado.
+Contém os conceitos do negócio da conversa: `Conversation`, `ChatMessage` e `MessageRole`. Não referencia frameworks, bancos, HTTP ou dispositivos. O histórico é limitado pelo próprio agregado.
 
 ### Pi.Application
 Define as **portas** (interfaces) que a infraestrutura implementa:
@@ -19,15 +19,13 @@ Define as **portas** (interfaces) que a infraestrutura implementa:
 | Porta | Finalidade |
 |---|---|
 | `ILLMClient` | enviar prompt ao modelo de linguagem |
-| `IAudioCapture` | capturar áudio do microfone |
-| `ISpeechToText` | transcrever áudio em texto |
 | `IMessageBus` | transportar mensagens entre workers |
 | `ITool` | representar uma ferramenta invocável |
 
-Também contém `AgentService` (montagem do prompt + histórico + ferramentas), `ToolRouter`, os casos de uso `ProcessMessageUseCase` e `CaptureVoiceUseCase`, e as classes de opções.
+Também contém `AgentService` (montagem do prompt + histórico + ferramentas), `ToolRouter`, o caso de uso `ProcessMessageUseCase` e as classes de opções.
 
 ### Pi.Infrastructure
-Implementações concretas: `OllamaClient` (HTTP), `NaudioAudioCapture` e `WhisperSpeechToText` (áudio), `ChannelMessageBus` (`System.Threading.Channels`), `SearchFilesTool` e `OpenAppTool`, além do registro de DI.
+Implementações concretas: `OllamaClient` (HTTP), `ChannelMessageBus` (`System.Threading.Channels`), `SearchFilesTool` e `OpenAppTool`, além do registro de DI.
 
 ### Pi.CLI
 Host genérico .NET. Responsabilidades:
@@ -36,7 +34,6 @@ Host genérico .NET. Responsabilidades:
 - registrar DI (`AddApplication`, `AddInfrastructure`);
 - hospedar os `BackgroundService`:
   - `ConsoleInputWorker` — lê texto do console;
-  - `VoiceInputWorker` — captura e transcreve voz;
   - `MessageProcessingWorker` — consome a fila e imprime a resposta.
 
 O `Ctrl+C` chama `IHostApplicationLifetime.StopApplication()`, garantindo desligamento gracioso com `CancellationToken`.
@@ -44,18 +41,18 @@ O `Ctrl+C` chama `IHostApplicationLifetime.StopApplication()`, garantindo deslig
 ## Fluxo de uma mensagem
 
 ```
-Console / Microfone
-        │
-        ▼
- IMessageBus (canal limitado)
-        │
-        ▼
- MessageProcessingWorker → ProcessMessageUseCase → AgentService
-                                                      ├─ ToolRouter (se casar)
-                                                      └─ ILLMClient (senão)
-        │
-        ▼
-   Console.Out ("Pi: ...")
+Console
+   │
+   ▼
+IMessageBus (canal limitado)
+   │
+   ▼
+MessageProcessingWorker → ProcessMessageUseCase → AgentService
+                                                   ├─ ToolRouter (se casar)
+                                                   └─ ILLMClient (senão)
+   │
+   ▼
+Console.Out ("Pi: ...")
 ```
 
 Logs usam `ILogger<T>` e são enviados para **stderr**; a resposta do assistente usa **stdout**.

@@ -74,7 +74,7 @@ public sealed class ConsoleInputWorker : BackgroundService
                 break;
             }
 
-            await _messageBus.PublishAsync(AssistantMessage.ForText(input), stoppingToken);
+            await _messageBus.PublishAsync(new AssistantMessage(input), stoppingToken);
         }
     }
 }

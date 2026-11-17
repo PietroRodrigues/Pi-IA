@@ -3,7 +3,6 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>Pi.CLI</RootNamespace>
     <AssemblyName>Pi.CLI</AssemblyName>
-    <WhisperModelFile Condition="'$(WhisperModelFile)' == ''">ggml-base.bin</WhisperModelFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,9 +17,5 @@
   <ItemGroup>
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../VoiceModels/$(WhisperModelFile)"
-          Link="VoiceModels/$(WhisperModelFile)"
-          CopyToOutputDirectory="PreserveNewest"
-          Condition="Exists('../../VoiceModels/$(WhisperModelFile)')" />
   </ItemGroup>
 </Project>

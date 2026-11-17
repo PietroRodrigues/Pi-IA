@@ -5,9 +5,6 @@
 
   <ItemGroup>
     <!-- Produção -->
-    <PackageVersion Include="NAudio" Version="2.3.0" />
-    <PackageVersion Include="Whisper.net" Version="1.9.0" />
-    <PackageVersion Include="Whisper.net.Runtime" Version="1.9.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.15" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.15" />
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.15" />

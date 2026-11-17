@@ -5,15 +5,10 @@ namespace Pi.Domain.Conversation;
 /// </summary>
 public sealed class ChatMessage
 {
-    private ChatMessage(
-        MessageRole role,
-        string content,
-        MessageSource source,
-        DateTimeOffset timestamp)
+    private ChatMessage(MessageRole role, string content, DateTimeOffset timestamp)
     {
         Role = role;
         Content = content;
-        Source = source;
         Timestamp = timestamp;
     }
 
@@ -21,25 +16,23 @@ public sealed class ChatMessage
 
     public string Content { get; }
 
-    public MessageSource Source { get; }
-
     public DateTimeOffset Timestamp { get; }
 
-    public static ChatMessage ForUser(string content, MessageSource source = MessageSource.Text)
+    public static ChatMessage ForUser(string content)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
-        return new ChatMessage(MessageRole.User, content.Trim(), source, DateTimeOffset.UtcNow);
+        return new ChatMessage(MessageRole.User, content.Trim(), DateTimeOffset.UtcNow);
     }
 
     public static ChatMessage ForAssistant(string content)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
-        return new ChatMessage(MessageRole.Assistant, content.Trim(), MessageSource.Text, DateTimeOffset.UtcNow);
+        return new ChatMessage(MessageRole.Assistant, content.Trim(), DateTimeOffset.UtcNow);
     }
 
     public static ChatMessage ForSystem(string content)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
-        return new ChatMessage(MessageRole.System, content.Trim(), MessageSource.Text, DateTimeOffset.UtcNow);
+        return new ChatMessage(MessageRole.System, content.Trim(), DateTimeOffset.UtcNow);
     }
 }

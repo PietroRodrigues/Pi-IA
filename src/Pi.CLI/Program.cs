@@ -15,7 +15,6 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddHostedService<ConsoleInputWorker>();
-builder.Services.AddHostedService<VoiceInputWorker>();
 builder.Services.AddHostedService<MessageProcessingWorker>();
 
 var host = builder.Build();

@@ -12,23 +12,6 @@ Arquivo principal: `src/Pi.CLI/appsettings.json`. Valores podem ser sobrescritos
 | `Model` | `qwen2.5:3b` | Modelo usado em `/api/generate` |
 | `TimeoutSeconds` | `60` | Timeout da requisição HTTP |
 
-### `Whisper`
-
-| Chave | Padrão | Descrição |
-|---|---|---|
-| `ModelPath` | `VoiceModels/ggml-base.bin` | Caminho do modelo (relativo ao diretório de execução) |
-| `Language` | `pt` | Idioma da transcrição |
-| `Threads` | `0` | `0` = usa todos os processadores |
-
-### `Audio`
-
-| Chave | Padrão | Descrição |
-|---|---|---|
-| `SampleRate` | `16000` | Taxa de amostragem |
-| `Channels` | `1` | Canais (mono) |
-| `CaptureDurationMs` | `5000` | Duração de cada gravação |
-| `TempFilePath` | `recording.wav` | Arquivo temporário (removido após a transcrição) |
-
 ### `Assistant`
 
 | Chave | Padrão | Descrição |

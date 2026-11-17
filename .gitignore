@@ -32,11 +32,4 @@ packages/
 appsettings.*.local.json
 
 # Local AI models (binaries must never be committed)
-**/VoiceModels/*.bin
 **/Models/*.bin
-!**/VoiceModels/.gitkeep
-
-# Audio generated at runtime
-recording*.wav
-*.mp3
-*.wav

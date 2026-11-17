@@ -6,12 +6,11 @@ namespace Pi.Domain.Tests;
 public class ChatMessageTests
 {
     [Fact]
-    public void ForUser_RecordsRoleSourceAndContent()
+    public void ForUser_RecordsRoleAndTrimmedContent()
     {
-        var message = ChatMessage.ForUser("  olá  ", MessageSource.Voice);
+        var message = ChatMessage.ForUser("  olá  ");
 
         Assert.Equal(MessageRole.User, message.Role);
-        Assert.Equal(MessageSource.Voice, message.Source);
         Assert.Equal("olá", message.Content);
     }
 
