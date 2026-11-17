@@ -1,30 +1,25 @@
-# Build
-bin/
-obj/
-
-# VS Code
-.vscode/
-
-# Visual Studio
-.vs/
-
-# Rider
-.idea/
-
-# User files
+# Build artifacts (any depth)
+[Bb]in/
+[Oo]bj/
+artifacts/
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
 
-# Logs
-*.log
+# IDEs
+.vscode/
+.vs/
+.idea/
 
-# Temp files
+# Logs and temp
+*.log
 *.tmp
 *.temp
+cache/
+temp/
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
 
@@ -32,19 +27,16 @@ Thumbs.db
 packages/
 *.nupkg
 
-# Environment
+# Environment / secrets
 .env
+appsettings.*.local.json
 
-# Local AI Models
-Pi.App/VoiceModels/*.bin
-VoiceModels/*.bin
-Models/*.bin
+# Local AI models (binaries must never be committed)
+**/VoiceModels/*.bin
+**/Models/*.bin
+!**/VoiceModels/.gitkeep
 
-# Audio test files
-recording.wav
+# Audio generated at runtime
+recording*.wav
 *.mp3
 *.wav
-
-# Runtime cache
-cache/
-temp/

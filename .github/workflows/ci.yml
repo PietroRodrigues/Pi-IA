@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Pi.slnx
+
+      - name: Build
+        run: dotnet build Pi.slnx --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test Pi.slnx --no-build --configuration Release --collect:"XPlat Code Coverage"
