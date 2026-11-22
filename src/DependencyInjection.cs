@@ -2,42 +2,40 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Pi.Abstracts.AI;
-using Pi.Abstracts.Tools;
-using Pi.Ollama;
+using Pi.Backend.AI;
+using Pi.Backend.Bootstrap;
+using Pi.Backend.Chat;
+using Pi.Backend.Tools;
+using Pi.Frontend;
 using Pi.Options;
-using Pi.Services;
-using Pi.Tools;
-using Pi.UI;
-using Pi.UseCases;
-using Pi.Workers;
-using Spectre.Console;
 
 namespace Pi;
 
 /// <summary>
-/// Registro central de serviços da aplicação.
+/// Registro central de serviços. É o único lugar que conhece Frontend e
+/// Backend: as duas camadas não se referenciam diretamente.
 /// </summary>
 public static class DependencyInjection
 {
-    public static IServiceCollection AddApplication(this IServiceCollection services)
+    public static IServiceCollection AddBackend(this IServiceCollection services)
     {
         services.AddSingleton(serviceProvider =>
         {
             var options = serviceProvider.GetRequiredService<IOptions<AssistantOptions>>().Value;
-            return new Pi.Conversation.Conversation(options.MaxHistoryMessages);
+            return new Conversation(options.MaxHistoryMessages);
         });
 
         services.AddTransient<ToolRouter>();
         services.AddTransient<AgentService>();
-        services.AddTransient<ProcessMessageUseCase>();
-
-        // Apresentação separada da lógica: a sessão só conhece IChatView.
-        services.AddSingleton<IAnsiConsole>(_ => AnsiConsole.Console);
-        services.AddSingleton<IChatView, SpectreChatView>();
-
+        services.AddTransient<ProcessMessage>();
         services.AddSingleton<ChatSession>();
-        services.AddTransient<ChatSessionWorker>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddFrontend(this IServiceCollection services)
+    {
+        services.AddSingleton<IChatView>(_ => new ConsoleChatView());
 
         return services;
     }
@@ -66,11 +64,11 @@ public static class DependencyInjection
 
         services.AddHttpClient<ILLMClient, OllamaClient>();
 
-        // Registrado antes dos workers: o host aguarda o StartAsync deste serviço
+        // Registrado antes do worker: o host aguarda o StartAsync deste serviço
         // antes de liberar a leitura do console.
-        services.AddHttpClient(nameof(OllamaServerBootstrapper));
+        services.AddHttpClient(nameof(OllamaBootstrapper));
         services.AddSingleton<IOllamaProcessLauncher, OllamaProcessLauncher>();
-        services.AddSingleton<IHostedService, OllamaServerBootstrapper>();
+        services.AddSingleton<IHostedService, OllamaBootstrapper>();
 
         services.AddTransient<ITool, SearchFilesTool>();
         services.AddTransient<ITool, OpenAppTool>();

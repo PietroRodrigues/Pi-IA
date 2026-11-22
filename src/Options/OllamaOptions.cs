@@ -11,7 +11,7 @@ public sealed class OllamaOptions
     public string BaseUrl { get; set; } = "http://127.0.0.1:11434";
 
     [Required(AllowEmptyStrings = false)]
-    public string Model { get; set; } = "qwen2.5:3b";
+    public string Model { get; set; } = "qwen3.8-2b-local";
 
     [Range(1, 3600)]
     public int TimeoutSeconds { get; set; } = 60;

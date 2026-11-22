@@ -19,8 +19,6 @@
     <!-- HTTP (cliente Ollama) -->
     <PackageReference Include="Microsoft.Extensions.Http" />
 
-    <!-- Interface do terminal -->
-    <PackageReference Include="Spectre.Console" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,132 +1,78 @@
-using System.Reflection;
 using Xunit;
 
 namespace Pi.Tests;
 
 /// <summary>
-/// A estrutura é plana e os módulos são pastas. Estes testes preservam duas
-/// regras que antes eram impostas por projetos separados: as interfaces em
-/// Abstracts não conhecem implementações, e Conversation permanece isolada.
+/// Três regras apenas, fáceis de ler: o backend não conhece o frontend, o
+/// frontend conhece só o contrato IChatView, e as entidades da conversa não
+/// dependem de nada além da BCL.
 /// </summary>
 public sealed class StructureTests
 {
-    private static readonly string[] ConcreteNamespaces =
-    [
-        "Pi.Ollama",
-        "Pi.UI",
-        "Pi.Tools",
-        "Pi.Workers",
-        "Microsoft.Extensions"
-    ];
-
     [Fact]
-    public void Abstracts_NaoDeveReferenciarImplementacoesConcretas()
+    public void Backend_NaoDeveReferenciarFrontend()
     {
-        var arquivos = ArquivosDe("Abstracts");
-
-        var violacoes = violacoesEm(arquivos, ConcreteNamespaces);
+        var violacoes = LinhasDe("src", "Backend")
+            .Where(linha => linha.Contains("Pi.Frontend", StringComparison.Ordinal));
 
         Assert.True(
-            violacoes.Length == 0,
-            "Pi.Abstracts deve conter apenas contratos. Violações:\n" + string.Join("\n", violacoes));
+            !violacoes.Any(),
+            "Backend não pode conhecer o Frontend. Violações:\n" + string.Join("\n", violacoes));
     }
 
     [Fact]
-    public void Conversation_NaoDeveReferenciarOutrosModulos()
+    public void Frontend_SoDeveReferenciarContratoDoChat()
     {
-        string[] proibidos = ["Pi.Abstracts", .. ConcreteNamespaces, "Pi.Services", "Pi.UseCases", "Pi.Options"];
-        var arquivos = ArquivosDe("Conversation");
-
-        var violacoes = violacoesEm(arquivos, proibidos);
+        var violacoes = LinhasDe("src", "Frontend")
+            .Where(linha => linha.Contains("Pi.Backend.", StringComparison.Ordinal) &&
+                            !linha.Contains("Pi.Backend.Chat", StringComparison.Ordinal));
 
         Assert.True(
-            violacoes.Length == 0,
-            "Pi.Conversation deve permanecer independente. Violações:\n" + string.Join("\n", violacoes));
+            !violacoes.Any(),
+            "Frontend só pode usar Pi.Backend.Chat.IChatView. Violações:\n" +
+            string.Join("\n", violacoes));
     }
 
     [Fact]
-    public void Abstracts_NaoDeveExporTiposConcretosNaApiPublica()
+    public void EntidadesDaConversa_PermanecemIsoladas()
     {
-        var tiposAbstratos = typeof(global::Pi.Abstracts.AI.ILLMClient).Assembly.GetTypes()
-            .Where(tipo => tipo.Namespace?.StartsWith("Pi.Abstracts", StringComparison.Ordinal) == true);
+        string[] arquivos =
+        [
+            CaminhoDe("src", "Backend", "Chat", "ChatMessage.cs"),
+            CaminhoDe("src", "Backend", "Chat", "Conversation.cs")
+        ];
 
-        var violacoes = new List<string>();
-
-        foreach (var tipo in tiposAbstratos)
-        {
-            var membros = tipo.GetMembers(
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly);
-
-            foreach (var membro in membros)
-            {
-                var tiposReferenciados = new List<Type>();
-
-                switch (membro)
-                {
-                    case PropertyInfo propriedade:
-                        tiposReferenciados.Add(propriedade.PropertyType);
-                        break;
-                    case FieldInfo campo:
-                        tiposReferenciados.Add(campo.FieldType);
-                        break;
-                    case MethodInfo metodo:
-                        tiposReferenciados.Add(metodo.ReturnType);
-                        tiposReferenciados.AddRange(
-                            metodo.GetParameters().Select(parametro => parametro.ParameterType));
-                        break;
-                    case ConstructorInfo construtor:
-                        tiposReferenciados.AddRange(
-                            construtor.GetParameters().Select(parametro => parametro.ParameterType));
-                        break;
-                }
-
-                foreach (var referenciado in tiposReferenciados)
-                {
-                    if (ConcreteNamespaces.Any(ns =>
-                            referenciado.Namespace?.StartsWith(ns, StringComparison.Ordinal) == true))
-                    {
-                        violacoes.Add($"{tipo.FullName}.{membro.Name} -> {referenciado.FullName}");
-                    }
-                }
-            }
-        }
+        var violacoes = arquivos
+            .SelectMany(arquivo => File.ReadAllLines(arquivo)
+                .Where(linha => linha.StartsWith("using ", StringComparison.Ordinal))
+                .Select(linha => $"{Path.GetFileName(arquivo)} -> {linha.Trim()}"));
 
         Assert.True(
-            violacoes.Count == 0,
-            "A API pública de Pi.Abstracts não pode expor implementações concretas:\n" + string.Join("\n", violacoes));
+            !violacoes.Any(),
+            "ChatMessage e Conversation não devem ter dependências. Violações:\n" +
+            string.Join("\n", violacoes));
     }
 
-    private static string[] ArquivosDe(string modulo)
+    private static IEnumerable<string> LinhasDe(params string[] partes) =>
+        Directory.GetFiles(CaminhoDe(partes), "*.cs", SearchOption.AllDirectories)
+            .SelectMany(arquivo => File.ReadAllLines(arquivo));
+
+    private static string CaminhoDe(params string[] partes)
     {
         var diretorio = new DirectoryInfo(AppContext.BaseDirectory);
 
         while (diretorio is not null)
         {
-            var candidato = Path.Combine(diretorio.FullName, "src", modulo);
-            if (Directory.Exists(candidato))
+            var candidato = Path.Combine(diretorio.FullName, Path.Combine(partes));
+            if (File.Exists(candidato) || Directory.Exists(candidato))
             {
-                return Directory.GetFiles(candidato, "*.cs", SearchOption.AllDirectories);
+                return candidato;
             }
 
             diretorio = diretorio.Parent;
         }
 
         throw new DirectoryNotFoundException(
-            $"Não foi possível localizar src/{modulo} a partir de {AppContext.BaseDirectory}.");
-    }
-
-    private static string[] violacoesEm(IEnumerable<string> arquivos, IEnumerable<string> namespacesProibidos)
-    {
-        return arquivos
-            .SelectMany(arquivo => File.ReadAllLines(arquivo)
-                .Select((linha, indice) => new
-                {
-                    Arquivo = Path.GetFileName(arquivo),
-                    Numero = indice + 1,
-                    Texto = linha
-                }))
-            .Where(item => namespacesProibidos.Any(ns => item.Texto.Contains(ns, StringComparison.Ordinal)))
-            .Select(item => $"{item.Arquivo}:{item.Numero} -> {item.Texto.Trim()}")
-            .ToArray();
+            $"Não foi possível localizar {Path.Combine(partes)} a partir de {AppContext.BaseDirectory}.");
     }
 }

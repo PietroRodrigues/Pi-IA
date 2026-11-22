@@ -29,6 +29,25 @@
       ],
       "group": "test",
       "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "tui-install",
+      "type": "process",
+      "command": "bun",
+      "args": [
+        "install",
+        "--frozen-lockfile"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/tui"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "debug-prep",
+      "dependsOn": ["build-debug", "tui-install"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
     }
   ]
 }

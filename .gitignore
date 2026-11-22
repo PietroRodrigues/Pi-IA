@@ -80,3 +80,9 @@ id_rsa*
 
 # Preferências locais do Pi.CLI (perfil do usuário)
 .pi-ia/
+
+# ============================================================
+# Node/Bun (TUI OpenTUI)
+# ============================================================
+tui/node_modules/
+tui/dist/

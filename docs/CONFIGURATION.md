@@ -9,7 +9,7 @@ Arquivo principal: `src/appsettings.json`. Valores podem ser sobrescritos por va
 | Chave | Padrão | Descrição |
 |---|---|---|
 | `BaseUrl` | `http://127.0.0.1:11434` | Endereço do servidor Ollama (IPv4 evita a resolução IPv6 de `localhost` no Windows) |
-| `Model` | `qwen2.5:3b` | Modelo usado em `/api/generate` |
+| `Model` | `qwen3.8-2b-local` | Modelo usado em `/api/generate` |
 | `TimeoutSeconds` | `60` | Timeout da requisição HTTP |
 | `AutoStart` | `true` | Inicia `ollama serve` automaticamente se o servidor local não responder |
 | `StartupTimeoutSeconds` | `30` | Tempo máximo (1–300 s) esperando o servidor responder |
@@ -24,10 +24,11 @@ O auto-start só atua quando `BaseUrl` aponta para `localhost`, `127.0.0.1` ou `
 |---|---|---|
 | `AgentName` | `geral` | Rótulo do agente exibido no chat (informativo; agentes reais virão depois) |
 | `MaxHistoryMessages` | `20` | Máximo de mensagens mantidas no histórico |
+| `ContextWindowTokens` | `32768` | Limite usado para calcular a porcentagem exibida na TUI |
 | `ExitKeywords` | `["sair", "exit"]` | Palavras que encerram a aplicação |
 | `SystemPrompt` | ver arquivo | Prompt base do assistente |
 
-O chat exibe no banner o modelo em uso (`Ollama:Model`) e o agente (`Assistant:AgentName`), e mostra um indicador "pensando" antes de cada resposta. Em terminal interativo o indicador é animado; com a saída redirecionada ele vira uma linha estática, sem códigos de controle.
+A CLI exibe no banner o modelo em uso (`Ollama:Model`) e o agente (`Assistant:AgentName`) e mostra uma linha "pensando" antes de cada resposta, sem animação e sem códigos de controle. Na TUI, esses mesmos dados vêm do evento `ready` e o status muda conforme os eventos `thought`, `tool_call` e `tool_result` chegam.
 
 ### `Tools`
 
@@ -49,7 +50,7 @@ Exemplo:
 
 ### `Logging`
 
-`Console.LogToStandardErrorThreshold` está em `Trace` para que **todos os logs** vão para stderr. O stdout fica reservado à interface do chat (banner, "pensando" e respostas).
+`Console.LogToStandardErrorThreshold` está em `Trace` para que **todos os logs** vão para stderr. Na CLI, o stdout fica reservado ao texto do chat; no modo `--bridge stdio`, o stdout fica reservado ao protocolo NDJSON lido pela TUI.
 
 ## Validação
 
