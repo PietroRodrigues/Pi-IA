@@ -9,7 +9,6 @@ import { theme } from "../theme"
 import { Composer } from "./Composer"
 import { Footer } from "./Footer"
 import { MessageList } from "./MessageList"
-import { Sidebar } from "./Sidebar"
 
 function handleEvent(event: BridgeOutput, state: ChatState): void {
   switch (event.type) {
@@ -92,15 +91,35 @@ export function App() {
   const shutdown = async () => {
     if (closing) return
     closing = true
+    monitor.log("encerrando TUI")
 
     const requestId = state.cancelActive()
     if (requestId) bridge?.cancel(requestId)
 
-    bridge?.dispose()
-    renderer.destroy()
-    await renderer.closed
-    process.exit(0)
+    try {
+      bridge?.dispose()
+      renderer.destroy()
+      // closed é necessário antes de process.exit(); o timeout evita travar
+      // caso a cena nativa não conclua a restauração do terminal.
+      await Promise.race([
+        renderer.closed.catch(() => undefined),
+        new Promise<void>(resolve => setTimeout(resolve, 1000))
+      ])
+      monitor.log("TUI encerrada")
+    } catch (error) {
+      monitor.log("falha no encerramento", {
+        message: error instanceof Error ? error.message : String(error)
+      })
+    } finally {
+      process.exit(0)
+    }
   }
+
+  const onExitSignal = () => {
+    void shutdown()
+  }
+
+  const EXIT_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP", "SIGBREAK"] as const
 
   useKeyboard(key => {
     if (key.ctrl && key.name === "c") {
@@ -128,6 +147,10 @@ export function App() {
   })
 
   onMount(() => {
+    for (const signal of EXIT_SIGNALS) {
+      process.on(signal, onExitSignal)
+    }
+
     if (monitor.enabled) {
       state.setSystemInfo(`Modo debug ativo · logs em ${monitor.logDir}`)
       monitor.log("TUI montada")
@@ -158,7 +181,12 @@ export function App() {
     }
   })
 
-  onCleanup(() => bridge?.dispose())
+  onCleanup(() => {
+    for (const signal of EXIT_SIGNALS) {
+      process.off(signal, onExitSignal)
+    }
+    bridge?.dispose()
+  })
 
   const submit = (text: string) => {
     if (state.busy()) return
@@ -180,13 +208,9 @@ export function App() {
         backgroundColor: theme.background
       }}
     >
-      <box style={{ width: "100%", flexGrow: 1, flexDirection: "row", minHeight: 0 }}>
-        <box style={{ flexGrow: 1, flexDirection: "column", minWidth: 0 }}>
-          <MessageList state={state} onJump={() => state.setJump(false)} />
-          <Composer onSubmit={submit} busy={state.busy} onRef={input => (inputRef = input)} />
-        </box>
-
-        <Sidebar state={state} />
+      <box style={{ width: "100%", flexGrow: 1, flexDirection: "column", minHeight: 0 }}>
+        <MessageList state={state} onJump={() => state.setJump(false)} />
+        <Composer onSubmit={submit} busy={state.busy} onRef={input => (inputRef = input)} />
       </box>
 
       <Footer state={state} />

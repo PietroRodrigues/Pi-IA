@@ -2,18 +2,17 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Pi.Backend.AI;
-using Pi.Backend.Bootstrap;
-using Pi.Backend.Chat;
-using Pi.Backend.Tools;
-using Pi.Frontend;
+using Pi.Core.Contracts;
+using Pi.Connections.Ollama;
+using Pi.Core.Chat;
+using Pi.Tools;
 using Pi.Options;
 
 namespace Pi;
 
 /// <summary>
-/// Registro central de serviços. É o único lugar que conhece Frontend e
-/// Backend: as duas camadas não se referenciam diretamente.
+/// Registro central de serviços. É o único lugar que conhece todas as camadas:
+/// elas não se referenciam diretamente.
 /// </summary>
 public static class DependencyInjection
 {
@@ -27,15 +26,6 @@ public static class DependencyInjection
 
         services.AddTransient<ToolRouter>();
         services.AddTransient<AgentService>();
-        services.AddTransient<ProcessMessage>();
-        services.AddSingleton<ChatSession>();
-
-        return services;
-    }
-
-    public static IServiceCollection AddFrontend(this IServiceCollection services)
-    {
-        services.AddSingleton<IChatView>(_ => new ConsoleChatView());
 
         return services;
     }

@@ -2,7 +2,6 @@ import { theme } from "../theme"
 import type { ChatState } from "../state"
 
 export function Footer(props: { state: ChatState }) {
-  const session = () => props.state.session()
   const stats = () => props.state.stats()
 
   return (
@@ -17,12 +16,9 @@ export function Footer(props: { state: ChatState }) {
         paddingRight: 1
       }}
     >
+      <text content={`Pi · ${props.state.status()}`} fg={theme.text} />
       <text
-        content={`${session().model} · ${props.state.status()}`}
-        fg={theme.text}
-      />
-      <text
-        content={`ctx ${stats().percent.toFixed(0)}% · ^p foco · ^l limpar · ^c sair`}
+        content={`Contexto: ${stats().percent.toFixed(0)}% · Ctrl+P foco · Ctrl+L limpar · Ctrl+C sair`}
         fg={theme.muted}
       />
     </box>

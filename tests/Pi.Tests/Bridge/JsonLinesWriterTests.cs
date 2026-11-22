@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.Json;
-using Pi.Frontend.Bridge;
+using Pi.Bridge;
 using Xunit;
 
 namespace Pi.Tests.Bridge;

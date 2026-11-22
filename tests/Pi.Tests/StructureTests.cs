@@ -3,33 +3,58 @@ using Xunit;
 namespace Pi.Tests;
 
 /// <summary>
-/// Três regras apenas, fáceis de ler: o backend não conhece o frontend, o
-/// frontend conhece só o contrato IChatView, e as entidades da conversa não
-/// dependem de nada além da BCL.
+/// Quatro regras curtas: o Core não conhece adapters, a ponte NDJSON usa só
+/// Pi.Core.Chat, a CLI textual não volta a aparecer, e as entidades da conversa
+/// não dependem de nada além da BCL.
 /// </summary>
 public sealed class StructureTests
 {
     [Fact]
-    public void Backend_NaoDeveReferenciarFrontend()
+    public void Core_NaoDeveReferenciarBridgeNemConexoes()
     {
-        var violacoes = LinhasDe("src", "Backend")
-            .Where(linha => linha.Contains("Pi.Frontend", StringComparison.Ordinal));
+        var violacoes = LinhasDe("src", "Core")
+            .Where(linha => linha.Contains("Pi.Bridge", StringComparison.Ordinal) ||
+                            linha.Contains("Pi.Connections", StringComparison.Ordinal));
 
         Assert.True(
             !violacoes.Any(),
-            "Backend não pode conhecer o Frontend. Violações:\n" + string.Join("\n", violacoes));
+            "Core não pode conhecer Bridge nem Connections/Ollama. Violações:\n" +
+            string.Join("\n", violacoes));
     }
 
     [Fact]
-    public void Frontend_SoDeveReferenciarContratoDoChat()
+    public void Bridge_SoDeveReferenciarCoreChat()
     {
-        var violacoes = LinhasDe("src", "Frontend")
-            .Where(linha => linha.Contains("Pi.Backend.", StringComparison.Ordinal) &&
-                            !linha.Contains("Pi.Backend.Chat", StringComparison.Ordinal));
+        var violacoes = LinhasDe("src", "Bridge")
+            .Where(linha => linha.Contains("Pi.Core.", StringComparison.Ordinal) &&
+                            !linha.Contains("Pi.Core.Chat", StringComparison.Ordinal));
 
         Assert.True(
             !violacoes.Any(),
-            "Frontend só pode usar Pi.Backend.Chat.IChatView. Violações:\n" +
+            "A ponte Bridge só pode usar Pi.Core.Chat (AgentService e eventos). Violações:\n" +
+            string.Join("\n", violacoes));
+    }
+
+    [Fact]
+    public void TiposDaCliTextual_NaoDevemVoltar()
+    {
+        string[] proibidos =
+        [
+            "Pi.Frontend",
+            "ConsoleChatView",
+            "IChatView",
+            "NullChatView",
+            "ChatSession",
+            "ChatWorker",
+            "ProcessMessage"
+        ];
+
+        var violacoes = LinhasDe("src")
+            .Where(linha => proibidos.Any(nome => linha.Contains(nome, StringComparison.Ordinal)));
+
+        Assert.True(
+            !violacoes.Any(),
+            "A CLI textual foi removida; estes tipos não devem reaparecer em src/. Violações:\n" +
             string.Join("\n", violacoes));
     }
 
@@ -38,8 +63,8 @@ public sealed class StructureTests
     {
         string[] arquivos =
         [
-            CaminhoDe("src", "Backend", "Chat", "ChatMessage.cs"),
-            CaminhoDe("src", "Backend", "Chat", "Conversation.cs")
+            CaminhoDe("src", "Core", "Chat", "ChatMessage.cs"),
+            CaminhoDe("src", "Core", "Chat", "Conversation.cs")
         ];
 
         var violacoes = arquivos

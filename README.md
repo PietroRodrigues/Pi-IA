@@ -8,29 +8,26 @@ O Pi também cuida do servidor: se o Ollama não estiver aberto, ele inicia `oll
 
 O Pi é uma conversa por texto com memória da sessão (padrão: últimas 20 mensagens). Além de responder, ele pode usar ferramentas locais simples: buscar arquivos em pastas autorizadas e abrir aplicativos.
 
-Existem duas formas de usar o mesmo backend em C#/.NET:
-
-- **CLI padrão** — texto simples, sem tela própria. É o modo normal do programa.
-- **TUI opcional** — interface visual em TypeScript/Bun, com painel lateral, respostas em streaming e eventos de ferramentas aparecendo na conversa.
+A interface ativa é a **TUI em TypeScript/Bun**, em `tui/`: coluna única, respostas em streaming e eventos de ferramentas aparecendo na conversa. O backend em C#/.NET roda como processo filho e só se comunica por NDJSON.
 
 Tudo funciona sem internet depois que o modelo foi baixado. Estão fora de escopo: voz, áudio, modelos embarcados e coleta de dados.
 
 ## Como funciona
 
 ```
-Você → Pi (.NET) → Ollama (modelo local) → Pi → Você
-          │                 ▲
-          └── ferramentas ──┘
+Você → TUI (Bun) → Pi.CLI (.NET, --bridge stdio) → Ollama → Pi → TUI
+                          │                 ▲
+                          └── ferramentas ──┘
 ```
 
-1. Você envia uma mensagem com `Enter` (na CLI) ou no campo de texto (na TUI).
+1. Você envia uma mensagem no campo de texto da TUI.
 2. O Pi monta o prompt com o histórico da conversa e informa ao modelo quais ferramentas estão disponíveis.
 3. O Ollama gera a resposta aos poucos, em streaming.
-4. O Pi devolve o resultado: linhas de texto na CLI; eventos `token`, `thought`, `tool_call` e `tool_result` na TUI.
+4. O Pi publica eventos `token`, `thought`, `tool_call`, `tool_result` e `context_stats`; a TUI monta a transcrição a partir deles.
 5. Se o modelo pedir, o Pi executa uma ferramenta — sempre dentro das pastas permitidas — e entrega o resultado de volta ao modelo.
 6. Na subida, o Pi verifica `http://127.0.0.1:11434`. Se não responder, inicia o Ollama e aguarda. Ao encerrar, o servidor continua rodando por padrão (`Ollama:StopOnExit=false`).
 
-A TUI roda em `tui/` e conversa com o backend por **NDJSON via stdin/stdout**. O `stdout` do C# fica reservado a essas mensagens JSON; logs e diagnósticos vão para o `stderr` ou para arquivos. A CLI textual permanece exatamente como era — o modo bridge é opt-in (`--bridge stdio`).
+A TUI conversa com o backend por **NDJSON via stdin/stdout**. O `stdout` do C# fica reservado a essas mensagens JSON; logs e diagnósticos vão para o `stderr` ou para arquivos. Por isso o `Pi.CLI` exige `--bridge stdio`: sem essa flag, ele exibe o uso no `stderr` e encerra com código não-zero.
 
 ## Requisitos
 
@@ -38,7 +35,7 @@ A TUI roda em `tui/` e conversa com o backend por **NDJSON via stdin/stdout**. O
 |---|---|
 | [.NET SDK 10.0](https://dotnet.microsoft.com/download) | Versão fixada em `global.json` |
 | [Ollama](https://ollama.com/download) | Precisa estar instalado; o Pi não instala o Ollama nem baixa modelos |
-| [Bun 1.3.14+](https://bun.sh/) | Necessário apenas para a TUI |
+| [Bun 1.3.14+](https://bun.sh/) | Necessário para a TUI — a única interface |
 
 ## Primeira execução
 
@@ -49,36 +46,18 @@ A TUI roda em `tui/` e conversa com o backend por **NDJSON via stdin/stdout**. O
 # 2. (Opcional) libere pastas para a ferramenta de busca em src/appsettings.json
 #    Tools:AllowedFolders — vazio por padrão, por segurança
 
-# 3. Rode o assistente
-dotnet run --project src/Pi.CLI.csproj
-```
-
-Digite uma mensagem e pressione `Enter`. Para sair: `sair`, `exit` ou `Ctrl+C`.
-
-## Escolha sua interface
-
-| | CLI (padrão) | TUI (opcional) |
-|---|---|---|
-| Como iniciar | `dotnet run --project src/Pi.CLI.csproj` | `cd tui; bun run dev` |
-| Tela | Linhas no terminal, sem códigos ANSI | Painel lateral, bolhas de mensagem e rodapé |
-| Resposta | Texto simples no stdout | Streaming de tokens via NDJSON |
-| Controles | Somente o terminal (scrollback e teclado do SO) | Atalhos próprios e rolagem com o mouse |
-| Preparação | Nenhuma | Compilar o backend e rodar `bun install` uma vez |
-
-Para usar a TUI:
-
-```powershell
-dotnet build src/Pi.CLI.csproj
+# 3. Compile o backend e inicie a TUI
+dotnet build Pi.slnx
 cd tui
 bun install
 bun run dev
 ```
 
+Digite uma mensagem e pressione `Enter`. Para sair da TUI: `Ctrl+C` com a aplicação ociosa.
+
+A TUI usa bolhas de mensagem em coluna única e rodapé com atalhos, e inicia o DLL já compilado em `artifacts/bin/Pi.CLI/debug/Pi.CLI.dll`. Se precisar recompilar sem sair da pasta, rode `dotnet build Pi.slnx` na raiz.
+
 ## Controles
-
-**CLI:** `Enter` envia; `sair`, `exit`, `Ctrl+C` ou `Ctrl+D` encerram. Nenhuma tecla é interceptada — acentos e layout do teclado dependem só do sistema operacional.
-
-**TUI:**
 
 | Tecla | Ação |
 |---|---|
@@ -94,14 +73,17 @@ Enquanto responde, o campo mostra `Gerando… Esc para cancelar`.
 
 | Pasta | Para que serve |
 |---|---|
-| `src/Backend/` | O "cérebro": conversa, agente, prompt, Ollama, ferramentas e inicialização |
-| `src/Frontend/` | A saída: interface textual e a ponte NDJSON usada pela TUI |
+| `src/Core/` | Decisões: agente, conversa, prompt e contratos — sem Ollama, ferramentas ou UI |
+| `src/Tools/` | Ferramentas locais (buscar arquivos, abrir app) e roteamento |
+| `src/Connections/Ollama/` | Cliente do modelo local e inicialização do servidor |
+| `src/Connections/Mcp/` | Ponto de extensão futuro para conexões MCP |
+| `src/Bridge/` | A ponte NDJSON usada pela TUI |
 | `tui/` | A interface visual em TypeScript/Bun (OpenTUI + Solid) |
 | `artifacts/` | Build do .NET e logs de debug — gerado automaticamente, não versionado |
 | `docs/` | Arquitetura, configuração e backlog |
 | `scripts/` | Scripts de apoio, como a instalação do modelo no Ollama |
 
-`Backend` não conhece `Frontend`: conhece apenas o contrato `IChatView`. O `src/DependencyInjection.cs` é o único ponto que liga as duas partes. Detalhes em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+`Core` não conhece `Connections` nem `Bridge`: conhece só os contratos. O `src/DependencyInjection.cs` é o único ponto que liga todas as partes, e `src/Program.cs` só aceita `--bridge stdio`. Um resumo está em [src/README.md](src/README.md); detalhes em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Configuração
 
@@ -109,7 +91,8 @@ As preferências ficam em `src/appsettings.json` e podem ser sobrescritas por va
 
 ```powershell
 $env:Ollama__Model = 'llama3.2'
-dotnet run --project src/Pi.CLI.csproj
+cd tui
+bun run dev
 ```
 
 Os grupos são `Ollama` (modelo, endereço e auto-start), `Assistant` (prompt, agente e histórico), `Tools` (pastas permitidas e limites) e `Logging`. A lista completa está em [docs/CONFIGURATION.md](docs/CONFIGURATION.md).

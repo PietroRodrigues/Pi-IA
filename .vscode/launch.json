@@ -3,12 +3,27 @@
   "configurations": [
     {
       "name": "Pi.TUI — Debug (Bun + C#)",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/tui",
+      "command": "bun run src/main.tsx",
+      "console": "integratedTerminal",
+      "preLaunchTask": "debug-prep",
+      "env": {
+        "PI_DEBUG": "1",
+        "DOTNET_ENVIRONMENT": "Development",
+        "PI_SKIP_BUILD": "1"
+      }
+    },
+    {
+      "name": "Pi.TUI — Breakpoints (Bun + C#)",
       "type": "node",
       "request": "launch",
       "cwd": "${workspaceFolder}/tui",
       "runtimeExecutable": "bun",
       "program": "${workspaceFolder}/tui/src/main.tsx",
       "console": "integratedTerminal",
+      "killBehavior": "polite",
       "preLaunchTask": "debug-prep",
       "env": {
         "PI_DEBUG": "1",

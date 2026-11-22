@@ -1,4 +1,4 @@
-// Contrato NDJSON. Os nomes batem com os records em src/Frontend/Bridge/BridgeProtocol.cs.
+// Contrato NDJSON. Os nomes batem com os records em src/Bridge/BridgeProtocol.cs.
 
 export interface PromptInput {
   type: "prompt"

@@ -13,7 +13,7 @@ Transformar o Pi-IA de um assistente local de texto em uma **plataforma CLI para
 - **Extensão:** consumir IAs em **nuvem** por meio de **APIs OpenAI-compatible**.
 - **Operação:** comandos para escolher **modelos**, escolher **agentes** e **conectar provedores externos**.
 
-O projeto atual já entrega a base: monólito de um assembly com `Frontend/` e `Backend/` dentro de `src/`, DI, Options, fila em memória, `ILLMClient` abstraído, cliente Ollama, ferramentas por prefixo, 32 testes e CI. O backlog abaixo parte dessa fundação.
+O projeto atual já entrega a base: monólito de um assembly com `Core/`, `Tools/`, `Connections/` e `Bridge/` dentro de `src/`, DI, Options, ponte NDJSON, `ILLMClient` abstraído, cliente Ollama, ferramentas por prefixo, 27 testes e CI. A TUI em `tui/` é a única interface; o `Pi.CLI` só roda com `--bridge stdio`. O backlog abaixo parte dessa fundação.
 
 ### Interpretações assumidas
 
@@ -60,10 +60,10 @@ O projeto atual já entrega a base: monólito de um assembly com `Frontend/` e `
 
 ### Etapa 0 — Fundação `[x]`
 
-- [x] Estrutura simples em um único assembly: `src/Frontend` (interface) e `src/Backend` (`Chat`, `AI`, `Tools`, `Bootstrap`); saída centralizada em `artifacts/`
+- [x] Estrutura simples em um único assembly: `src/Frontend` (interface) e `src/Backend` (`Chat`, `AI`, `Tools`, `Bootstrap`); saída centralizada em `artifacts/` (reorganizada depois em `Core/`, `Tools/`, `Connections/`, `Bridge/`)
 - [x] DI, Options Pattern com validação na subida, `IHttpClientFactory`
 - [x] Workers com `CancellationToken` e loop sequencial de chat (o antigo `IMessageBus` foi removido na evolução da interface)
-- [x] Interface de chat puramente textual, sem ANSI, sem Spectre.Console e sem interceptação de teclas (lógica em `Backend/Chat/ChatSession`, apresentação em `Frontend/ConsoleChatView`)
+- [x] Interface de chat puramente textual, sem ANSI e sem interceptação de teclas (implementada na época; removida depois — a TUI em `tui/` passou a ser a única interface)
 - [x] `ILLMClient` + `OllamaClient` (texto, `/api/generate`)
 - [x] `ITool`, `ToolRouter`, `SearchFilesTool`, `OpenAppTool` (placeholder)
 - [x] Histórico em memória com limite
@@ -169,17 +169,17 @@ O projeto atual já entrega a base: monólito de um assembly com `Frontend/` e `
 ### Etapa 7 — Experiência de conversa `P2`
 
 - [-] TUI antiga em C# com alternate screen e leitura própria de teclado (descartada: causava digitação inconsistente)
-- [x] Interface textual mínima na CLI, sem Spectre.Console, sem ANSI e sem interceptação de teclas
+- [-] Interface textual mínima na CLI (removida: TUI única)
 - [x] Nova TUI isolada em `tui/` (OpenTUI + Solid), iniciando o backend C# como subprocesso
 - [x] Ponte NDJSON via stdin/stdout com `prompt`, `cancel`, `clear`, `token`, `tool_call`, `tool_result`, `context_stats`, `done` e `error`
 - [x] Streaming de tokens na TUI via `/api/generate` com `stream=true`
 - [x] Rolagem por mouse, `Jump to latest ↓`, Ctrl+P (foco), Ctrl+L (limpar) e Ctrl+C (saída) **apenas na TUI**
-- [x] Separação simples entre `Frontend/` e `Backend/` com três guardrails em `StructureTests`
-- [x] Indicador de "pensando" escrito como uma linha na CLI, sem spinner
-- [x] Modelo e agente exibidos na boas-vindas da CLI e no evento `ready` da TUI
+- [x] Separação entre `Core/`, `Tools/`, `Connections/` e `Bridge/` com quatro guardrails em `StructureTests`
+- [x] Indicador de "pensando" via evento `thought` na TUI, sem spinner no backend
+- [x] Modelo e agente exibidos no evento `ready` da TUI
 - [ ] Histórico persistente entre sessões (SQLite ou JSON no perfil)
 - [ ] `/history` e `/resume` (retomar conversa salva)
-- [ ] Diálogos/paleta de comandos (`/help`, `/model`) na interface textual
+- [ ] Diálogos/paleta de comandos (`/help`, `/model`) na TUI
 - [ ] Tempo de resposta no status
 
 ---

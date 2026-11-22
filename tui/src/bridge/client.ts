@@ -175,17 +175,11 @@ export class BridgeClient {
     if (BridgeClient.hooksInstalled) return
     BridgeClient.hooksInstalled = true
 
-    // Rede de segurança: mesmo uma saída anômala (exceção não tratada, Stop no
-    // VS Code, terminal fechado) precisa levar o subprocesso junto.
+    // Rede de segurança: qualquer saída precisa levar o subprocesso junto.
+    // A saída normal é coordenada pelo App, que também destrói o renderer
+    // antes de chamar process.exit(0).
     process.on("exit", () => {
       for (const client of BridgeClient.instances) client.dispose()
     })
-
-    for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
-      process.on(signal, () => {
-        for (const client of BridgeClient.instances) client.dispose()
-        process.exit(0)
-      })
-    }
   }
 }

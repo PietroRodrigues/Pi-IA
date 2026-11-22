@@ -50,7 +50,7 @@ Exemplo:
 
 ### `Logging`
 
-`Console.LogToStandardErrorThreshold` está em `Trace` para que **todos os logs** vão para stderr. Na CLI, o stdout fica reservado ao texto do chat; no modo `--bridge stdio`, o stdout fica reservado ao protocolo NDJSON lido pela TUI.
+`Console.LogToStandardErrorThreshold` está em `Trace` para que **todos os logs** vão para stderr. Como a TUI é a única interface, o `Pi.CLI` roda sempre com `--bridge stdio` e seu stdout fica reservado ao protocolo NDJSON lido pela TUI. Sem essa flag, o programa exibe o uso no stderr e encerra com código não-zero.
 
 ## Validação
 
