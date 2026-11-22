@@ -1,3 +1,4 @@
+// Ajustes do comportamento do assistente que vêm da seção "Assistant".
 using System.ComponentModel.DataAnnotations;
 
 namespace Pi.Options;
@@ -28,19 +29,16 @@ public sealed class AssistantOptions
     [Range(2, 500)]
     public int MaxHistoryMessages { get; set; } = 20;
 
-    /// <summary>
-    /// Limite aproximado de contexto exibido na barra de status da TUI.
-    /// Não altera o modelo; apenas informa a porcentagem usada.
-    /// </summary>
+    // Limite aproximado de contexto exibido na barra de status da TUI.
+    // Não altera o modelo; apenas informa a porcentagem usada.
     [Range(1024, 1_000_000)]
     public int ContextWindowTokens { get; set; } = 32_768;
 
+    // Palavras de saída mantidas por compatibilidade; a TUI encerra com Ctrl+C.
     [MinLength(1)]
     public string[] ExitKeywords { get; set; } = ["sair", "exit"];
 
-    /// <summary>
-    /// Rótulo do agente exibido no chat. Hoje é apenas informativo.
-    /// </summary>
+    // Rótulo do agente exibido no chat. Hoje é apenas informativo.
     [Required(AllowEmptyStrings = false)]
     public string AgentName { get; set; } = "geral";
 }

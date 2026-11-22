@@ -1,3 +1,4 @@
+// Antes de abrir a ponte, verifica se o Ollama está no ar e, se preciso, o inicia.
 using System.ComponentModel;
 using System.Diagnostics;
 using Microsoft.Extensions.Hosting;
@@ -7,10 +8,8 @@ using Pi.Options;
 
 namespace Pi.Connections.Ollama;
 
-/// <summary>
-/// Garante que o servidor local do Ollama esteja disponível antes de o chat
-/// começar a ler mensagens. Falhas são informadas, mas não impedem a subida.
-/// </summary>
+// Garante que o servidor local do Ollama esteja disponível antes de o chat
+// começar a ler mensagens. Falhas são informadas, mas não impedem a subida.
 public sealed class OllamaBootstrapper : IHostedService
 {
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(1);
@@ -137,7 +136,7 @@ public sealed class OllamaBootstrapper : IHostedService
 
             using var response = await _httpClient.GetAsync(
                 "/api/tags",
-                HttpCompletionOption.ResponseHeadersRead,
+                HttpCompletionOption.ResponseHeadersRead, // começa a ler antes do corpo terminar
                 probe.Token);
 
             // Qualquer resposta HTTP significa que a porta está aberta.
@@ -150,6 +149,7 @@ public sealed class OllamaBootstrapper : IHostedService
         }
     }
 
+    // Só damos start automático em localhost; servidor remoto é responsabilidade de quem o configurou.
     private static bool IsLocal(string baseUrl)
     {
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))

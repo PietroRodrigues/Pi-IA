@@ -1,3 +1,5 @@
+// Ponto de entrada do backend. Aqui só existe o modo ponte: a TUI é a interface,
+// e este processo fica limitado a NDJSON no stdout e logs no stderr.
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Pi;
@@ -35,6 +37,7 @@ Console.CancelKeyPress += (_, eventArgs) =>
 await host.RunAsync();
 return 0;
 
+// Aceita as duas formas da flag; o que sobrar vai para o host (configuração).
 static (bool UseBridge, string[] HostArgs) ParseArgs(string[] args)
 {
     var useBridge = false;

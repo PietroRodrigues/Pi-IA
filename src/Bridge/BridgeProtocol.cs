@@ -1,10 +1,10 @@
+// As mensagens que atravessam a ponte. Cada record vira uma linha NDJSON
+// com nomes em camelCase: RequestId -> requestId.
 namespace Pi.Bridge;
 
-/// <summary>
-/// Contrato NDJSON entre a TUI e o backend. As convenções de nomenclatura
-/// vêm de <see cref="System.Text.Json.JsonSerializerDefaults.Web"/>:
-/// <c>Type</c> vira <c>type</c>, <c>RequestId</c> vira <c>requestId</c>, etc.
-/// </summary>
+// Contrato NDJSON entre a TUI e o backend. As convenções de nomenclatura
+// vêm de System.Text.Json.JsonSerializerDefaults.Web:
+// Type vira type, RequestId vira requestId, etc.
 
 // TUI -> C#
 public sealed record PromptInput(string Type, string RequestId, string Text);

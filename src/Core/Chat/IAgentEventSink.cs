@@ -1,9 +1,9 @@
+// O caminho por onde o agente avisa o que acontece. A ponte escreve no stdout;
+// quem não mostra progresso usa a versão nula.
 namespace Pi.Core.Chat;
 
-/// <summary>
-/// Saída de eventos durante uma pergunta. A CLI usa a implementação nula;
-/// a ponte NDJSON usa uma implementação que escreve no stdout.
-/// </summary>
+// Saída de eventos durante uma pergunta. A ponte escreve no stdout;
+// quem não mostra progresso usa a versão nula.
 public interface IAgentEventSink
 {
     Task ThoughtAsync(string text, CancellationToken cancellationToken = default);
@@ -17,10 +17,7 @@ public interface IAgentEventSink
     Task ContextStatsAsync(int used, int limit, CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// Implementação padrão: descarta todos os eventos. Mantém o comportamento
-/// da CLI textual exatamente como era antes da ponte existir.
-/// </summary>
+// Descarta os eventos. Serve para testes e para quem só quer o texto final.
 public sealed class NullAgentEventSink : IAgentEventSink
 {
     public static NullAgentEventSink Instance { get; } = new();

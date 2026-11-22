@@ -1,3 +1,4 @@
+// O mapa de serviços da aplicação. As camadas só se encontram aqui.
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -10,10 +11,8 @@ using Pi.Options;
 
 namespace Pi;
 
-/// <summary>
-/// Registro central de serviços. É o único lugar que conhece todas as camadas:
-/// elas não se referenciam diretamente.
-/// </summary>
+// Registro central de serviços. É o único lugar que conhece todas as camadas:
+// elas não se referenciam diretamente.
 public static class DependencyInjection
 {
     public static IServiceCollection AddBackend(this IServiceCollection services)

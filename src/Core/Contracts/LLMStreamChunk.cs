@@ -1,12 +1,11 @@
+// Formato neutro dos pedaços de resposta, sem nada específico do Ollama.
 namespace Pi.Core.Contracts;
 
-/// <summary>
-/// Pedaço genérico de uma resposta em streaming, independente do provedor.
-/// </summary>
-/// <param name="Text">Texto gerado neste pedaço.</param>
-/// <param name="Done">Indica o último pacote da resposta.</param>
-/// <param name="PromptEvalCount">Tokens do prompt, quando disponíveis.</param>
-/// <param name="EvalCount">Tokens gerados até o momento, quando disponíveis.</param>
+// Pedaço genérico de uma resposta em streaming, independente do provedor.
+// Text: Texto gerado neste pedaço.
+// Done: Indica o último pacote da resposta.
+// PromptEvalCount: Tokens do prompt, quando disponíveis.
+// EvalCount: Tokens gerados até o momento, quando disponíveis.
 public sealed record LLMStreamChunk(
     string Text,
     bool Done,

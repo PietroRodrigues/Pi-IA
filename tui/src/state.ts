@@ -1,3 +1,5 @@
+// Todo o estado reativo do chat: mensagens, status e o pedido em andamento.
+// A ponte só alimenta este estado; ela não decide como a tela se comporta.
 import { createSignal, type Accessor } from "solid-js"
 
 export type MessageRole = "user" | "assistant" | "system" | "info" | "thought" | "tool"

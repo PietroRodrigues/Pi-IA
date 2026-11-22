@@ -1,3 +1,4 @@
+// Nomes estáveis das ferramentas, usados nos eventos e nos testes.
 namespace Pi.Tools;
 
 public static class ToolNames

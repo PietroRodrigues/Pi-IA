@@ -1,3 +1,4 @@
+// Garante que o roteador usa a primeira ferramenta que serve e devolve null quando nenhuma serve.
 using NSubstitute;
 using Pi.Core.Chat;
 using Pi.Core.Contracts;

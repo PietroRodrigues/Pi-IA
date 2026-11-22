@@ -1,12 +1,12 @@
+// Registra o que a ponte precisa: writer, worker e o hosted service.
+// Sem --bridge stdio, este registro nunca é chamado.
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Pi.Bridge;
 
 namespace Pi;
 
-/// <summary>
-/// Registro da ponte NDJSON. O Pi.CLI só roda com <c>--bridge stdio</c>.
-/// </summary>
+// Registro da ponte NDJSON. O Pi.CLI só roda com --bridge stdio.
 public static class BridgeRegistration
 {
     public static IServiceCollection AddBridge(this IServiceCollection services)

@@ -1,3 +1,6 @@
+// O coração da ponte: transforma linhas lidas do stdin em pedidos ao agente
+// e devolve o resultado como eventos no stdout. Logs vão para stderr;
+// o stdout só leva NDJSON.
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
@@ -10,10 +13,8 @@ using Pi.Options;
 
 namespace Pi.Bridge;
 
-/// <summary>
-/// Ponte da TUI: lê NDJSON do stdin e devolve NDJSON no stdout.
-/// Todo log continua indo para stderr; nenhum texto de interface é escrito aqui.
-/// </summary>
+// Ponte da TUI: lê NDJSON do stdin e devolve NDJSON no stdout.
+// Todo log continua indo para stderr; nenhum texto de interface é escrito aqui.
 public sealed class StdioBridgeWorker : BackgroundService
 {
     private readonly TextReader _input;
@@ -91,6 +92,7 @@ public sealed class StdioBridgeWorker : BackgroundService
 
             if (line is null)
             {
+                // A TUI fechou o pipe: não faz sentido manter o host vivo.
                 _lifetime.StopApplication();
                 break;
             }
@@ -238,7 +240,7 @@ public sealed class StdioBridgeWorker : BackgroundService
                 _running.TryRemove(requestId, out _);
                 requestCancellation.Dispose();
             }
-        }, CancellationToken.None);
+        }, CancellationToken.None); // o pedido termina e avisa a TUI antes de sair
 
         _running[requestId] = task;
     }
@@ -256,6 +258,7 @@ public sealed class StdioBridgeWorker : BackgroundService
             ? value.GetString()
             : null;
 
+    // Melhor esforço: se o git falhar ou demorar, a ponte segue com "—".
     private static string ReadGitBranch()
     {
         try

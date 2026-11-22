@@ -1,16 +1,16 @@
+// Escreve eventos no stdout da ponte, um por linha, sem buffer.
 using System.Text.Json;
 
 namespace Pi.Bridge;
 
-/// <summary>
-/// Escritor exclusivo do stdout no modo ponte. Uma linha JSON por evento,
-/// com flush imediato para a TUI receber tokens sem esperar o buffer.
-/// </summary>
+// Escritor exclusivo do stdout no modo ponte. Uma linha JSON por evento,
+// com flush imediato para a TUI receber tokens sem esperar o buffer.
 public sealed class JsonLinesWriter
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
     private readonly TextWriter _writer;
+    // Vários prompts podem responder ao mesmo tempo; as linhas não podem se misturar.
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     public JsonLinesWriter(TextWriter writer)

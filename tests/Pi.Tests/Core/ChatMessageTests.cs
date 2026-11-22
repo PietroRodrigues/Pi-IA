@@ -1,3 +1,4 @@
+// Garante que cada mensagem guarda o papel certo e nunca aceita texto vazio.
 using Pi.Core.Chat;
 using Xunit;
 

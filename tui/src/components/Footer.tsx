@@ -1,3 +1,4 @@
+// Barra inferior: mostra o estado atual e os atalhos que cabem na linha.
 import { theme } from "../theme"
 import type { ChatState } from "../state"
 

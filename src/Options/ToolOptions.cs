@@ -1,3 +1,4 @@
+// Limites de segurança das ferramentas, da seção "Tools".
 using System.ComponentModel.DataAnnotations;
 
 namespace Pi.Options;
@@ -6,9 +7,7 @@ public sealed class ToolOptions
 {
     public const string SectionName = "Tools";
 
-    /// <summary>
-    /// Pastas que a ferramenta de busca pode varrer. Vazio por padrão (seguro).
-    /// </summary>
+    // Pastas que a ferramenta de busca pode varrer. Vazio por padrão (seguro).
     public string[] AllowedFolders { get; set; } = [];
 
     [Range(1, 1000)]

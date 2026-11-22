@@ -1,3 +1,4 @@
+// Caminho sem streaming: ferramenta resolve sem modelo, histórico é gravado e prompt inclui o passado.
 using NSubstitute;
 using Pi.Core.Contracts;
 using Pi.Core.Chat;

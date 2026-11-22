@@ -1,3 +1,4 @@
+// Garante que o parser aceita JSON único e NDJSON, e reclama quando não há resposta.
 using Pi.Connections.Ollama;
 using Xunit;
 

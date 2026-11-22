@@ -1,3 +1,5 @@
+// A área de conversa: desenha as bolhas e decide quando vale usar markdown.
+// Se o usuário subiu o scroll, mostra o atalho para voltar ao fim.
 import { SyntaxStyle, type ScrollBoxRenderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { For, Show, createEffect, onCleanup } from "solid-js"
@@ -9,6 +11,7 @@ interface MessageListProps {
   onJump: () => void
 }
 
+// Só liga o markdown quando há bloco de código, tabela ou título.
 function hasRichContent(text: string): boolean {
   return (
     text.includes("```") ||
@@ -111,6 +114,7 @@ export function MessageList(props: MessageListProps) {
 
   let scrollRef: ScrollBoxRenderable | undefined
 
+  // Não pula para o fim se o usuário estiver lendo mensagens antigas.
   const updateJump = () => {
     const scroll = scrollRef
     if (!scroll) {

@@ -1,4 +1,5 @@
-// Contrato NDJSON. Os nomes batem com os records em src/Bridge/BridgeProtocol.cs.
+// Contrato NDJSON entre TUI e backend: os nomes batem com src/Bridge/BridgeProtocol.cs.
+// BridgeInput vai da TUI para o C#; BridgeOutput volta do C# para a TUI.
 
 export interface PromptInput {
   type: "prompt"

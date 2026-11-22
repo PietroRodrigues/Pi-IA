@@ -1,3 +1,4 @@
+// Configuração do servidor local e do modelo, da seção "Ollama".
 using System.ComponentModel.DataAnnotations;
 
 namespace Pi.Options;
@@ -16,24 +17,16 @@ public sealed class OllamaOptions
     [Range(1, 3600)]
     public int TimeoutSeconds { get; set; } = 60;
 
-    /// <summary>
-    /// Inicia <c>ollama serve</c> automaticamente quando o servidor local não responde.
-    /// </summary>
+    // Inicia ollama serve automaticamente quando o servidor local não responde.
     public bool AutoStart { get; set; } = true;
 
-    /// <summary>
-    /// Tempo máximo esperando o servidor responder depois de iniciado.
-    /// </summary>
+    // Tempo máximo esperando o servidor responder depois de iniciado.
     [Range(1, 300)]
     public int StartupTimeoutSeconds { get; set; } = 30;
 
-    /// <summary>
-    /// Caminho explícito do executável. Vazio = descoberta automática.
-    /// </summary>
+    // Caminho explícito do executável. Vazio = descoberta automática.
     public string? ExecutablePath { get; set; }
 
-    /// <summary>
-    /// Encerra o processo iniciado pelo Pi quando a aplicação sai.
-    /// </summary>
+    // Encerra o processo iniciado pelo Pi quando a aplicação sai.
     public bool StopOnExit { get; set; }
 }

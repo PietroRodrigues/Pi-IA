@@ -1,3 +1,5 @@
+// Guarda logs da TUI e do backend em arquivo. Nunca escreve no stdout:
+// ali só pode passar o que o OpenTUI desenha.
 import { appendFileSync, existsSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
 

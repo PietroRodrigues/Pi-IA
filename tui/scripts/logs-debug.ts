@@ -1,3 +1,5 @@
+// Acompanha os arquivos de debug no terminal. Mostra o fim de cada um ao abrir
+// e, depois, só o que for acrescentado.
 import { existsSync, readFileSync, watchFile, unwatchFile } from "node:fs"
 import { join } from "node:path"
 import { LOG_FILES, resolveLogDir } from "../src/debug/monitor"

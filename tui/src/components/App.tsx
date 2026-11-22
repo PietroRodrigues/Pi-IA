@@ -1,3 +1,5 @@
+// A tela principal. Liga eventos da ponte ao estado, cuida do teclado e
+// concentra o encerramento em um único caminho.
 import type { InputRenderable } from "@opentui/core"
 import { useKeyboard, useRenderer } from "@opentui/solid"
 import { onCleanup, onMount } from "solid-js"
@@ -115,6 +117,7 @@ export function App() {
     }
   }
 
+  // Sinais do sistema — inclui o Ctrl+C que o VS Code envia no Stop.
   const onExitSignal = () => {
     void shutdown()
   }

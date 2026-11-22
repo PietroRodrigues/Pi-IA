@@ -1,3 +1,4 @@
+// Caminho da ponte: tokens, ferramentas e contagem de contexto precisam chegar ao sink.
 using System.Runtime.CompilerServices;
 using NSubstitute;
 using Pi.Core.Contracts;

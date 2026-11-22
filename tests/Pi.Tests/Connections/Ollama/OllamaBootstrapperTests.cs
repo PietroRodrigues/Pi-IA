@@ -1,3 +1,4 @@
+// Garante que o auto-start só acontece quando faz sentido e nunca derruba a aplicação.
 using System.Net;
 using Microsoft.Extensions.Logging.Abstractions;
 using Pi.Connections.Ollama;

@@ -1,8 +1,7 @@
+// Uma ferramenta simples: reconhece a entrada e devolve um texto.
 namespace Pi.Core.Contracts;
 
-/// <summary>
-/// Uma ferramenta que pode ser acionada pela entrada do usuário.
-/// </summary>
+// Uma ferramenta que pode ser acionada pela entrada do usuário.
 public interface ITool
 {
     string Name { get; }

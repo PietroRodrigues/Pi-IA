@@ -1,10 +1,9 @@
+// Tira o texto da resposta do Ollama, tanto no formato único quanto em NDJSON.
 using System.Text.Json;
 
 namespace Pi.Connections.Ollama;
 
-/// <summary>
-/// Extrai o campo "response" do payload do Ollama, aceitando JSON único ou NDJSON.
-/// </summary>
+// Extrai o campo "response" do payload do Ollama, aceitando JSON único ou NDJSON.
 public static class OllamaResponseParser
 {
     public static string Parse(string body)

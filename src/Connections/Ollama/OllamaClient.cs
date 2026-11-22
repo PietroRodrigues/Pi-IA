@@ -1,3 +1,4 @@
+// Fala com o Ollama: resposta inteira de uma vez ou em pedaços, via HTTP.
 using System.Net;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
@@ -9,9 +10,7 @@ using Pi.Options;
 
 namespace Pi.Connections.Ollama;
 
-/// <summary>
-/// Cliente HTTP para a API /api/generate do Ollama.
-/// </summary>
+// Cliente HTTP para a API /api/generate do Ollama.
 public sealed class OllamaClient : ILLMClient, IStreamingLLMClient
 {
     private readonly HttpClient _httpClient;
@@ -109,7 +108,7 @@ public sealed class OllamaClient : ILLMClient, IStreamingLLMClient
         {
             response = await _httpClient.SendAsync(
                 request,
-                HttpCompletionOption.ResponseHeadersRead,
+                HttpCompletionOption.ResponseHeadersRead, // começa a ler antes do corpo terminar
                 cancellationToken);
         }
         catch (HttpRequestException ex)
@@ -141,6 +140,7 @@ public sealed class OllamaClient : ILLMClient, IStreamingLLMClient
 
             while (await reader.ReadLineAsync(cancellationToken) is { } line)
             {
+                // O Ollama pode mandar linhas de diagnóstico no meio do NDJSON.
                 if (string.IsNullOrWhiteSpace(line) || !line.StartsWith('{'))
                 {
                     continue;

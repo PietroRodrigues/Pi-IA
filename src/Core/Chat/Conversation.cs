@@ -1,8 +1,7 @@
+// Histórico da conversa. Cresce até o limite e descarta as mensagens mais velhas.
 namespace Pi.Core.Chat;
 
-/// <summary>
-/// Agregado que mantém o histórico limitado da conversa.
-/// </summary>
+// Agregado que mantém o histórico limitado da conversa.
 public sealed class Conversation
 {
     private readonly List<ChatMessage> _messages;
@@ -43,6 +42,7 @@ public sealed class Conversation
             return;
         }
 
+        // As primeiras da lista são as mais antigas.
         _messages.RemoveRange(0, _messages.Count - _maxMessages);
     }
 }

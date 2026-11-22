@@ -1,3 +1,4 @@
+// Gera o bundle da TUI em tui/dist. Os binários nativos ficam de fora de propósito.
 import solidPlugin from "@opentui/solid/bun-plugin"
 
 const result = await Bun.build({

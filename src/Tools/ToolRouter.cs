@@ -1,11 +1,10 @@
+// Escolhe a primeira ferramenta que reconhece a entrada e avisa o sink sobre o resultado.
 using Pi.Core.Chat;
 using Pi.Core.Contracts;
 
 namespace Pi.Tools;
 
-/// <summary>
-/// Seleciona a primeira ferramenta capaz de tratar a entrada.
-/// </summary>
+// Seleciona a primeira ferramenta capaz de tratar a entrada.
 public sealed class ToolRouter
 {
     private readonly IReadOnlyList<ITool> _tools;
@@ -44,6 +43,7 @@ public sealed class ToolRouter
             }
             catch
             {
+                // A falha aparece na TUI e a exceção continua para o chamador.
                 await sink.ToolResultAsync(tool.Name, false, string.Empty, cancellationToken);
                 throw;
             }

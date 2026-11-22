@@ -1,3 +1,4 @@
+// Campo de digitação. Envia o texto quando dá Enter e ignora cliques enquanto gera.
 import type { InputRenderable } from "@opentui/core"
 import { createEffect, type Accessor } from "solid-js"
 import { theme } from "../theme"

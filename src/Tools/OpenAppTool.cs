@@ -1,12 +1,11 @@
+// Ferramenta reservada para "abra ...". Hoje só avisa que ainda não foi implementada.
 using Microsoft.Extensions.Logging;
 
 using Pi.Core.Contracts;
 
 namespace Pi.Tools;
 
-/// <summary>
-/// Placeholder para a futura abertura de aplicativos.
-/// </summary>
+// Placeholder para a futura abertura de aplicativos.
 public sealed class OpenAppTool : ITool
 {
     private readonly ILogger<OpenAppTool> _logger;

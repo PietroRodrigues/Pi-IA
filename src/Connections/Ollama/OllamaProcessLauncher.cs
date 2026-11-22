@@ -1,21 +1,18 @@
+// Encontra o executável do Ollama e dispara "serve" sem janela e sem herdar o stdout.
 using System.ComponentModel;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Pi.Connections.Ollama;
 
-/// <summary>
-/// Localiza e inicia o processo do servidor Ollama em segundo plano.
-/// </summary>
+// Localiza e inicia o processo do servidor Ollama em segundo plano.
 public interface IOllamaProcessLauncher
 {
     OllamaLaunchResult Start(string? configuredPath);
 }
 
-/// <summary>
-/// Resultado de uma tentativa de inicialização. <see cref="Error"/> é preenchido
-/// apenas quando não foi possível iniciar o processo.
-/// </summary>
+// Resultado de uma tentativa de inicialização. Error é preenchido
+// apenas quando não foi possível iniciar o processo.
 public sealed record OllamaLaunchResult(bool Started, Process? Process, string? Error)
 {
     public static OllamaLaunchResult Ok(Process? process = null) => new(true, process, null);
@@ -23,10 +20,8 @@ public sealed record OllamaLaunchResult(bool Started, Process? Process, string? 
     public static OllamaLaunchResult Fail(string error) => new(false, null, error);
 }
 
-/// <summary>
-/// Procura o executável no PATH e nos caminhos de instalação conhecidos,
-/// então dispara <c>ollama serve</c> sem abrir uma janela de console.
-/// </summary>
+// Procura o executável no PATH e nos caminhos de instalação conhecidos,
+// então dispara ollama serve sem abrir uma janela de console.
 public sealed class OllamaProcessLauncher : IOllamaProcessLauncher
 {
     private readonly ILogger<OllamaProcessLauncher> _logger;
@@ -76,6 +71,7 @@ public sealed class OllamaProcessLauncher : IOllamaProcessLauncher
                     continue;
                 }
 
+                // Drena os pipes: se ninguém ler, o filho pode travar ao escrever neles.
                 processo.OutputDataReceived += (_, _) => { };
                 processo.ErrorDataReceived += (_, _) => { };
                 processo.BeginOutputReadLine();

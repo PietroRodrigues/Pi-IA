@@ -1,3 +1,4 @@
+// Vive no processo da TUI: inicia o dotnet, troca NDJSON e garante que ele morra junto.
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
@@ -35,6 +36,7 @@ export class BridgeClient {
   private static hooksInstalled = false
 
   private child: ChildProcessWithoutNullStreams | undefined
+  // Um evento pode chegar quebrado em dois chunks; guardamos até fechar a linha.
   private buffer = ""
   private stderrTail = ""
   private disposed = false
@@ -128,6 +130,7 @@ export class BridgeClient {
     const timer = setTimeout(() => {
       if (child.exitCode === null && child.signalCode === null) {
         try {
+          // Último recurso: o backend teve 1s para sair depois do SIGTERM.
           child.kill("SIGKILL")
         } catch {
           // Nada mais a fazer.

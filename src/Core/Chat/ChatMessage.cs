@@ -1,8 +1,7 @@
+// As mensagens que formam o histórico. São imutáveis para poderem ser reutilizadas.
 namespace Pi.Core.Chat;
 
-/// <summary>
-/// Papel de uma mensagem na conversa.
-/// </summary>
+// Papel de uma mensagem na conversa.
 public enum MessageRole
 {
     System,
@@ -10,9 +9,7 @@ public enum MessageRole
     Assistant
 }
 
-/// <summary>
-/// Uma mensagem imutável da conversa.
-/// </summary>
+// Uma mensagem imutável da conversa.
 public sealed class ChatMessage
 {
     private ChatMessage(MessageRole role, string content, DateTimeOffset timestamp)

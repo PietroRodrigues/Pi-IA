@@ -1,12 +1,12 @@
+// Guardrails da arquitetura: Core isolado, ponte contida, sem CLI antiga
+// e entidades da conversa sem dependências.
 using Xunit;
 
 namespace Pi.Tests;
 
-/// <summary>
-/// Quatro regras curtas: o Core não conhece adapters, a ponte NDJSON usa só
-/// Pi.Core.Chat, a CLI textual não volta a aparecer, e as entidades da conversa
-/// não dependem de nada além da BCL.
-/// </summary>
+// Quatro regras curtas: o Core não conhece adapters, a ponte NDJSON usa só
+// Pi.Core.Chat, a CLI textual não volta a aparecer, e as entidades da conversa
+// não dependem de nada além da BCL.
 public sealed class StructureTests
 {
     [Fact]

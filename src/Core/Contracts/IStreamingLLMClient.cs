@@ -1,9 +1,8 @@
+// Contrato opcional: a resposta chega aos poucos. Sem ele, vem inteira de uma vez.
 namespace Pi.Core.Contracts;
 
-/// <summary>
-/// Extensão opcional para modelos que conseguem transmitir a resposta aos poucos.
-/// O cliente textual antigo continua usando apenas <see cref="ILLMClient"/>.
-/// </summary>
+// Extensão para modelos que conseguem transmitir a resposta aos poucos.
+// Quem não implementa isso entrega o texto inteiro de uma vez.
 public interface IStreamingLLMClient : ILLMClient
 {
     IAsyncEnumerable<LLMStreamChunk> StreamAsync(

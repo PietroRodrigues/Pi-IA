@@ -1,3 +1,4 @@
+// Garante que cada evento vire exatamente uma linha NDJSON, com os campos certos.
 using System.Text;
 using System.Text.Json;
 using Pi.Bridge;

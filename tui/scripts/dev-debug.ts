@@ -1,3 +1,4 @@
+// Launcher de debug: liga o monitor antes de carregar a TUI e compila o backend se preciso.
 import { spawnSync } from "node:child_process"
 import { join } from "node:path"
 import { findRepoRoot, getDebugMonitor, resolveLogDir } from "../src/debug/monitor"

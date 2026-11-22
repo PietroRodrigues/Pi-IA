@@ -1,3 +1,4 @@
+// Ponto de entrada da TUI. Só monta o App e define como o terminal deve se comportar.
 import { render } from "@opentui/solid"
 import { App } from "./components/App"
 import { theme } from "./theme"

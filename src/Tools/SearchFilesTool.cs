@@ -1,3 +1,4 @@
+// Busca arquivos só nas pastas liberadas no appsettings, com limite de tempo e de resultados.
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Pi.Core.Contracts;
@@ -5,9 +6,7 @@ using Pi.Options;
 
 namespace Pi.Tools;
 
-/// <summary>
-/// Busca arquivos por nome nas pastas explicitamente permitidas.
-/// </summary>
+// Busca arquivos por nome nas pastas explicitamente permitidas.
 public sealed class SearchFilesTool : ITool
 {
     private readonly ToolOptions _options;
@@ -52,6 +51,7 @@ public sealed class SearchFilesTool : ITool
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
+            // O filtro distingue timeout do cancelamento feito pelo usuário.
             return "A busca excedeu o tempo limite.";
         }
 

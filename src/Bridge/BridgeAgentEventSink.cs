@@ -1,10 +1,9 @@
+// Liga o agente ao writer da ponte e carrega o requestId em cada evento.
 using Pi.Core.Chat;
 
 namespace Pi.Bridge;
 
-/// <summary>
-/// Converte os eventos do agente em mensagens NDJSON com o requestId da pergunta.
-/// </summary>
+// Converte os eventos do agente em mensagens NDJSON com o requestId da pergunta.
 public sealed class BridgeAgentEventSink : IAgentEventSink
 {
     private readonly JsonLinesWriter _writer;

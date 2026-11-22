@@ -1,3 +1,4 @@
+// Garante que o histórico respeita o limite, descarta as mensagens antigas e limpa tudo.
 using Pi.Core.Chat;
 using Xunit;
 using ConversationAggregate = Pi.Core.Chat.Conversation;
