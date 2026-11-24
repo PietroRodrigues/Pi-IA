@@ -1,0 +1,34 @@
+# Texto: normalize CRLF no repositório e converte no checkout conforme a plataforma.
+* text=auto
+
+*.cs text eol=crlf
+*.csproj text eol=crlf
+*.props text eol=crlf
+*.targets text eol=crlf
+*.sln text eol=crlf
+*.json text eol=crlf
+*.ts text eol=crlf
+*.tsx text eol=crlf
+*.md text eol=crlf
+*.yml text eol=crlf
+*.yaml text eol=crlf
+.editorconfig text eol=crlf
+.gitattributes text eol=crlf
+.gitignore text eol=crlf
+
+# Binários e artefatos gerados nunca sofrem conversão.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.bin binary
+*.dll binary
+*.exe binary
+*.pdb binary
+*.wav binary
+*.mp3 binary
+bun.lock text eol=lf
+
+# Logs de debug são locais.
+*.log -diff linguist-generated

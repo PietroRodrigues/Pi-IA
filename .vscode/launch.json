@@ -2,20 +2,25 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Pi.App — Debug (tudo)",
+      "name": "Pi — Debug (tudo)",
       "type": "coreclr",
       "request": "launch",
-      "program": "${workspaceFolder}/artifacts/bin/Pi.App/debug/Pi.App.dll",
-      "cwd": "${workspaceFolder}/Pi.App",
+      "program": "${workspaceFolder}/artifacts/bin/Pi.Host/debug/Pi.Host.dll",
+      "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "preLaunchTask": "debug-prep",
       "stopAtEntry": false,
       "env": {
         "PI_DEBUG": "1",
         "DOTNET_ENVIRONMENT": "Development",
-        "PI_SKIP_BUILD": "1",
         "PI_TUI_INSPECT": "9229"
       }
+    },
+    {
+      "name": "Pi.Host — Anexar ao backend",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickProcess}"
     },
     {
       "name": "TUI — Attach (9229)",
@@ -24,18 +29,12 @@
       "port": 9229,
       "restart": false,
       "skipFiles": ["<node_internals>/**"]
-    },
-    {
-      "name": "BodyTools — Anexar ao processo",
-      "type": "coreclr",
-      "request": "attach",
-      "processId": "${command:pickProcess}"
     }
   ],
   "compounds": [
     {
-      "name": "Pi.App — Debug (C# + TUI)",
-      "configurations": ["Pi.App — Debug (tudo)", "TUI — Attach (9229)"],
+      "name": "Pi — Debug (C# + TUI)",
+      "configurations": ["Pi — Debug (tudo)", "TUI — Attach (9229)"],
       "stopAll": true
     }
   ]

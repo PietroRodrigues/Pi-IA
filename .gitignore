@@ -3,7 +3,10 @@
 # ============================================================
 [Bb]in/
 [Oo]bj/
-artifacts/
+artifacts/*
+!artifacts/debug/
+artifacts/debug/*
+!artifacts/debug/.gitkeep
 *.binlog
 
 # Resultados de teste e cobertura
@@ -78,11 +81,11 @@ id_rsa*
 *.wav
 *.mp3
 
-# Preferências locais do BodyTools (perfil do usuário)
+# Preferências locais e snapshots de sessão (perfil do usuário)
 .pi-ia/
 
 # ============================================================
-# Node/Bun (módulo interfaceTui)
+# Node/Bun (TUI)
 # ============================================================
-Pi.App/Modulos/interfaceTui/node_modules/
-Pi.App/Modulos/interfaceTui/dist/
+src/Pi.Tui/node_modules/
+src/Pi.Tui/dist/

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Pi.Contracts</RootNamespace>
+    <AssemblyName>Pi.Contracts</AssemblyName>
+  </PropertyGroup>
+</Project>
