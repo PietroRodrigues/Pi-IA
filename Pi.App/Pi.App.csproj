@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Pi.App</RootNamespace>
+    <AssemblyName>Pi.App</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Os módulos ficam dentro da pasta do pai, mas não são código-fonte dele. -->
+    <Compile Remove="Modulos\**" />
+    <Compile Remove="tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Obriga o BodyTools a compilar junto: o pai é o entry point único. -->
+    <ProjectReference Include="Modulos\BodyTools\BodyTools.csproj" />
+  </ItemGroup>
+</Project>

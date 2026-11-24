@@ -78,11 +78,11 @@ id_rsa*
 *.wav
 *.mp3
 
-# Preferências locais do Pi.CLI (perfil do usuário)
+# Preferências locais do BodyTools (perfil do usuário)
 .pi-ia/
 
 # ============================================================
-# Node/Bun (TUI OpenTUI)
+# Node/Bun (módulo interfaceTui)
 # ============================================================
-tui/node_modules/
-tui/dist/
+Pi.App/Modulos/interfaceTui/node_modules/
+Pi.App/Modulos/interfaceTui/dist/

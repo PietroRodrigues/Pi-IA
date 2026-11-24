@@ -9,7 +9,7 @@
 
     <!--
       Saída centralizada: nenhum bin/obj espalhado pelos projetos.
-      Tudo vai para <raiz>/artifacts/{bin,obj}/<projeto>/<config>/<framework>.
+      Tudo vai para <raiz>/artifacts/{bin,obj}/<projeto>/<config>/.
       A pasta artifacts/ já é ignorada pelo .gitignore.
     -->
     <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>

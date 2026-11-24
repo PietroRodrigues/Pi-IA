@@ -2,86 +2,41 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Pi.TUI — Debug (Bun + C#)",
-      "type": "node-terminal",
+      "name": "Pi.App — Debug (tudo)",
+      "type": "coreclr",
       "request": "launch",
-      "cwd": "${workspaceFolder}/tui",
-      "command": "bun run src/main.tsx",
+      "program": "${workspaceFolder}/artifacts/bin/Pi.App/debug/Pi.App.dll",
+      "cwd": "${workspaceFolder}/Pi.App",
       "console": "integratedTerminal",
       "preLaunchTask": "debug-prep",
+      "stopAtEntry": false,
       "env": {
         "PI_DEBUG": "1",
         "DOTNET_ENVIRONMENT": "Development",
-        "PI_SKIP_BUILD": "1"
+        "PI_SKIP_BUILD": "1",
+        "PI_TUI_INSPECT": "9229"
       }
     },
     {
-      "name": "Pi.TUI — Breakpoints (Bun + C#)",
+      "name": "TUI — Attach (9229)",
       "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/tui",
-      "runtimeExecutable": "bun",
-      "program": "${workspaceFolder}/tui/src/main.tsx",
-      "console": "integratedTerminal",
-      "killBehavior": "polite",
-      "preLaunchTask": "debug-prep",
-      "env": {
-        "PI_DEBUG": "1",
-        "DOTNET_ENVIRONMENT": "Development",
-        "PI_SKIP_BUILD": "1"
-      },
+      "request": "attach",
+      "port": 9229,
+      "restart": false,
       "skipFiles": ["<node_internals>/**"]
     },
     {
-      "name": "Pi.TUI — Terminal monitorado (fallback)",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/tui",
-      "command": "bun run dev:debug",
-      "console": "integratedTerminal",
-      "preLaunchTask": "debug-prep"
-    },
-    {
-      "name": "Pi.CLI — Debug",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build-debug",
-      "program": "${workspaceFolder}/artifacts/bin/Pi.CLI/debug/Pi.CLI.dll",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "stopAtEntry": false
-    },
-    {
-      "name": "Pi.CLI — Debug + logs",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build-debug",
-      "program": "${workspaceFolder}/artifacts/bin/Pi.CLI/debug/Pi.CLI.dll",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "stopAtEntry": false,
-      "env": {
-        "DOTNET_ENVIRONMENT": "Development"
-      }
-    },
-    {
-      "name": "Pi.CLI — Sem auto-start",
-      "type": "coreclr",
-      "request": "launch",
-      "preLaunchTask": "build-debug",
-      "program": "${workspaceFolder}/artifacts/bin/Pi.CLI/debug/Pi.CLI.dll",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "stopAtEntry": false,
-      "env": {
-        "Ollama__AutoStart": "false"
-      }
-    },
-    {
-      "name": "Pi.CLI — Anexar ao processo",
+      "name": "BodyTools — Anexar ao processo",
       "type": "coreclr",
       "request": "attach",
       "processId": "${command:pickProcess}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Pi.App — Debug (C# + TUI)",
+      "configurations": ["Pi.App — Debug (tudo)", "TUI — Attach (9229)"],
+      "stopAll": true
     }
   ]
 }

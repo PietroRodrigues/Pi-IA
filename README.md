@@ -4,30 +4,41 @@ Assistente de IA **local** para o terminal. Você digita uma mensagem e o Pi con
 
 O Pi também cuida do servidor: se o Ollama não estiver aberto, ele inicia `ollama serve` em segundo plano e espera ficar pronto antes de aceitar mensagens.
 
-## O que é
+## Módulos
 
-O Pi é uma conversa por texto com memória da sessão (padrão: últimas 20 mensagens). Além de responder, ele pode usar ferramentas locais simples: buscar arquivos em pastas autorizadas e abrir aplicativos.
+O repositório mantém a configuração compartilhada na raiz (`global.json`, `Directory.Build.props`, `Directory.Packages.props`, `artifacts/`) e o código em `Pi.App/`:
 
-A interface ativa é a **TUI em TypeScript/Bun**, em `tui/`: coluna única, respostas em streaming e eventos de ferramentas aparecendo na conversa. O backend em C#/.NET roda como processo filho e só se comunica por NDJSON.
+```text
+Pi-IA/                            configuração compartilhada (.NET SDK, pacotes, artifacts/)
+├── Pi.App/                       ← projeto pai: entry point e dono dos módulos
+│   ├── Pi.App.slnx               ← solution que orquestra os projetos .NET
+│   ├── Model/ View/ Controller/  ← MVC do pai (ciclo de vida)
+│   ├── Modulos/
+│   │   ├── BodyTools/            ← backend .NET (Model / Controller / View)
+│   │   └── interfaceTui/         ← TUI Bun + OpenTUI (model / view / controller / infra + tests)
+│   ├── tests/BodyTools.Tests/    ← testes xUnit do backend
+│   ├── docs/                     ← arquitetura, configuração e backlog
+│   └── scripts/                  ← instalação do modelo no Ollama
+└── artifacts/                    ← build e logs de debug (gerado, não versionado)
+```
 
-Tudo funciona sem internet depois que o modelo foi baixado. Estão fora de escopo: voz, áudio, modelos embarcados e coleta de dados.
+Cada módulo é independente: o `BodyTools` não conhece a TUI, e a `interfaceTui` não conhece namespaces C#. O único contrato entre eles é o **NDJSON via stdin/stdout**. O `Pi.App` é o projeto pai: ele só descobre os módulos, garante o build e inicia a TUI.
 
 ## Como funciona
 
 ```
-Você → TUI (Bun) → Pi.CLI (.NET, --bridge stdio) → Ollama → Pi → TUI
-                          │                 ▲
-                          └── ferramentas ──┘
+Pi.App (.NET) → interfaceTui (Bun) → BodyTools (.NET, --bridge stdio) → Ollama → interfaceTui
+                │                     │
+                └─ terminal           └─ NDJSON + ferramentas
 ```
 
-1. Você envia uma mensagem no campo de texto da TUI.
-2. O Pi monta o prompt com o histórico da conversa e informa ao modelo quais ferramentas estão disponíveis.
-3. O Ollama gera a resposta aos poucos, em streaming.
-4. O Pi publica eventos `token`, `thought`, `tool_call`, `tool_result` e `context_stats`; a TUI monta a transcrição a partir deles.
-5. Se o modelo pedir, o Pi executa uma ferramenta — sempre dentro das pastas permitidas — e entrega o resultado de volta ao modelo.
-6. Na subida, o Pi verifica `http://127.0.0.1:11434`. Se não responder, inicia o Ollama e aguarda. Ao encerrar, o servidor continua rodando por padrão (`Ollama:StopOnExit=false`).
+1. A **View** da TUI envia o texto digitado ao **Controller** da TUI.
+2. O Controller publica `prompt` em NDJSON; o **Controller** do BodyTools interpreta e chama o **Model** (agente, conversa, ferramentas).
+3. O Ollama gera a resposta em streaming.
+4. A **View** do BodyTools projeta `token`, `thought`, `tool_call`, `tool_result` e `context_stats` em NDJSON.
+5. O Controller da TUI aplica os eventos ao seu **Model**, e a View renderiza a transcrição.
 
-A TUI conversa com o backend por **NDJSON via stdin/stdout**. O `stdout` do C# fica reservado a essas mensagens JSON; logs e diagnósticos vão para o `stderr` ou para arquivos. Por isso o `Pi.CLI` exige `--bridge stdio`: sem essa flag, ele exibe o uso no `stderr` e encerra com código não-zero.
+O `stdout` do C# fica reservado ao NDJSON; logs e diagnósticos vão para o `stderr` ou arquivos. Por isso o `BodyTools` exige `--bridge stdio`: sem a flag, ele exibe o uso no `stderr` e encerra com código não-zero.
 
 ## Requisitos
 
@@ -35,27 +46,24 @@ A TUI conversa com o backend por **NDJSON via stdin/stdout**. O `stdout` do C# f
 |---|---|
 | [.NET SDK 10.0](https://dotnet.microsoft.com/download) | Versão fixada em `global.json` |
 | [Ollama](https://ollama.com/download) | Precisa estar instalado; o Pi não instala o Ollama nem baixa modelos |
-| [Bun 1.3.14+](https://bun.sh/) | Necessário para a TUI — a única interface |
+| [Bun 1.3.14+](https://bun.sh/) | Necessário para a `interfaceTui` — a única interface |
 
 ## Primeira execução
 
 ```powershell
 # 1. Baixe o modelo usado por padrão
-.\scripts\setup-ollama.ps1 -Model qwen3.8-2b-local
+.\Pi.App\scripts\setup-ollama.ps1 -Model qwen3.8-2b-local
 
-# 2. (Opcional) libere pastas para a ferramenta de busca em src/appsettings.json
+# 2. (Opcional) libere pastas para a ferramenta de busca em Pi.App/Modulos/BodyTools/appsettings.json
 #    Tools:AllowedFolders — vazio por padrão, por segurança
 
-# 3. Compile o backend e inicie a TUI
-dotnet build Pi.slnx
-cd tui
-bun install
-bun run dev
+# 3. Compile os módulos e inicie tudo pelo projeto pai
+dotnet run --project Pi.App
 ```
 
-Digite uma mensagem e pressione `Enter`. Para sair da TUI: `Ctrl+C` com a aplicação ociosa.
+Digite uma mensagem e pressione `Enter`. Para sair: `Ctrl+C` com a aplicação ociosa.
 
-A TUI usa bolhas de mensagem em coluna única e rodapé com atalhos, e inicia o DLL já compilado em `artifacts/bin/Pi.CLI/debug/Pi.CLI.dll`. Se precisar recompilar sem sair da pasta, rode `dotnet build Pi.slnx` na raiz.
+A TUI inicia o DLL já compilado em `artifacts/bin/BodyTools/debug/BodyTools.dll`, não `dotnet run`, para não corromper o parser com mensagens de build. O `dotnet run --project Pi.App` compila o `BodyTools` via `ProjectReference` antes de abrir a TUI; para validar sem terminal, use `PI_SKIP_TUI=1`.
 
 ## Controles
 
@@ -69,72 +77,61 @@ A TUI usa bolhas de mensagem em coluna única e rodapé com atalhos, e inicia o 
 
 Enquanto responde, o campo mostra `Gerando… Esc para cancelar`.
 
-## Estrutura do projeto
+## Estrutura MVC
 
-| Pasta | Para que serve |
+| Módulo | Papel |
 |---|---|
-| `src/Core/` | Decisões: agente, conversa, prompt e contratos — sem Ollama, ferramentas ou UI |
-| `src/Tools/` | Ferramentas locais (buscar arquivos, abrir app) e roteamento |
-| `src/Connections/Ollama/` | Cliente do modelo local e inicialização do servidor |
-| `src/Connections/Mcp/` | Ponto de extensão futuro para conexões MCP |
-| `src/Bridge/` | A ponte NDJSON usada pela TUI |
-| `tui/` | A interface visual em TypeScript/Bun (OpenTUI + Solid) |
-| `artifacts/` | Build do .NET e logs de debug — gerado automaticamente, não versionado |
-| `docs/` | Arquitetura, configuração e backlog |
-| `scripts/` | Scripts de apoio, como a instalação do modelo no Ollama |
+| `Pi.App/Model/` | Descoberta e validação dos módulos, estado do ciclo de vida |
+| `Pi.App/View/` | Mensagens do launcher no stderr do desenvolvedor |
+| `Pi.App/Controller/` | Build → install → spawn da TUI → shutdown → exit code |
+| `Pi.App/Modulos/BodyTools/Model/` | Decisões: agente, conversa, contratos, ferramentas e conexões |
+| `Pi.App/Modulos/BodyTools/Controller/` | Entrada NDJSON, `requestId`, cancelamento e despacho ao Model |
+| `Pi.App/Modulos/BodyTools/View/` | DTOs do protocolo, escritor NDJSON e eventos tipados |
+| `Pi.App/Modulos/interfaceTui/src/model/` | Estado reativo e regras do pedido ativo |
+| `Pi.App/Modulos/interfaceTui/src/controller/` | Eventos, teclado, submit, cancel/clear e shutdown |
+| `Pi.App/Modulos/interfaceTui/src/view/` | Componentes OpenTUI + Solid |
+| `Pi.App/Modulos/interfaceTui/src/infra/` | Cliente da ponte, protocolo e monitor de debug |
 
-`Core` não conhece `Connections` nem `Bridge`: conhece só os contratos. O `src/DependencyInjection.cs` é o único ponto que liga todas as partes, e `src/Program.cs` só aceita `--bridge stdio`. Um resumo está em [src/README.md](src/README.md); detalhes em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+`Model` não conhece `Controller`/`View`; `View` só conhece os eventos do Model; na TUI, `view/` nunca importa o cliente da ponte. Guardrails em `tests/BodyTools.Tests/StructureTests.cs` e `bun run check:arch` protegem essas regras.
 
 ## Configuração
 
-As preferências ficam em `src/appsettings.json` e podem ser sobrescritas por variáveis de ambiente:
+As preferências ficam em `Pi.App/Modulos/BodyTools/appsettings.json` e podem ser sobrescritas por variáveis de ambiente:
 
 ```powershell
 $env:Ollama__Model = 'llama3.2'
-cd tui
+cd Pi.App/Modulos/interfaceTui
 bun run dev
 ```
 
-Os grupos são `Ollama` (modelo, endereço e auto-start), `Assistant` (prompt, agente e histórico), `Tools` (pastas permitidas e limites) e `Logging`. A lista completa está em [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+Os grupos são `Ollama`, `Assistant`, `Tools` e `Logging`. Detalhes em [Pi.App/docs/CONFIGURATION.md](Pi.App/docs/CONFIGURATION.md).
 
 ## Debug / execução monitorada
 
-O modo debug compila o backend, sobe a TUI com o C# em `Development` e grava tudo em arquivos — sem misturar diagnósticos com o NDJSON ou com a renderização.
-
-**No VS Code:** selecione **Pi.TUI — Debug (Bun + C#)** e pressione `F5`. A task `debug-prep` roda `dotnet build Pi.slnx` e `bun install --frozen-lockfile` antes de iniciar. Se o adaptador Node+Bun não der breakpoints, use **Pi.TUI — Terminal monitorado (fallback)**. Para depurar o C#, inicie a TUI e depois use **Pi.CLI — Anexar ao processo**.
-
-**No terminal:**
+No VS Code, selecione **Pi.App — Debug (tudo)** e pressione `F5`: a task `debug-prep` compila os três projetos e instala as dependências, e o `Pi.App` inicia a TUI. A config **Pi.App — Debug (C# + TUI)** adiciona o attach do Bun na porta 9229 (se o attach começar antes da TUI, rode **TUI — Attach (9229)** manualmente). Para breakpoint no backend, use **BodyTools — Anexar ao processo**. Equivalente no terminal:
 
 ```powershell
-cd tui
+cd Pi.App/Modulos/interfaceTui
 bun run dev:debug
 ```
 
-Para não recompilar: `PI_SKIP_BUILD=1 bun run dev:debug`.
-
-**Acompanhando os logs:** em outra janela, `cd tui; bun run logs:debug` mostra os arquivos em `artifacts/debug/` e segue novidades em tempo real.
-
-| Arquivo | Conteúdo |
-|---|---|
-| `tui.log` | exceções da TUI, spawn/saída do backend e eventos enviados |
-| `pi-cli.stderr.log` | logs do C# (nível `Pi: Debug`) |
-| `pi-cli.ndjson.log` | cada mensagem NDJSON recebida do backend |
-| `dotnet-build.log` | saída do `dotnet build` |
-
-`Stop`/`Shift+F5`, `Ctrl+C` ou fechar o terminal encerram a TUI e o `dotnet` filho sem deixar órfãos. O `ollama serve` permanece rodando por configuração.
+Para não recompilar: `PI_SKIP_BUILD=1 bun run dev:debug`. Acompanhe os logs com `bun run logs:debug` na mesma pasta; os arquivos ficam em `artifacts/debug/`.
 
 ## Verificação
 
 ```powershell
-dotnet test Pi.slnx
+dotnet build Pi.App/Pi.App.slnx
+dotnet test Pi.App/Pi.App.slnx
 
-cd tui
+cd Pi.App/Modulos/interfaceTui
+bun run check:arch
 bun run typecheck
+bun run test
 bun run build
 ```
 
 ## Documentação
 
-- [Arquitetura](docs/ARCHITECTURE.md)
-- [Configuração](docs/CONFIGURATION.md)
-- [Backlog do projeto](docs/BACKLOG.md)
+- [Arquitetura](Pi.App/docs/ARCHITECTURE.md)
+- [Configuração](Pi.App/docs/CONFIGURATION.md)
+- [Backlog do projeto](Pi.App/docs/BACKLOG.md)

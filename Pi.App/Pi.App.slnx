@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Pi.App.csproj" />
+  <Project Path="Modulos/BodyTools/BodyTools.csproj" />
+  <Project Path="tests/BodyTools.Tests/BodyTools.Tests.csproj" />
+</Solution>

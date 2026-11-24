@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="src/Pi.CLI.csproj" />
-  <Project Path="tests/Pi.Tests/Pi.Tests.csproj" />
-</Solution>
