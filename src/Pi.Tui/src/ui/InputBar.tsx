@@ -1,19 +1,27 @@
-// Campo de digitação. Envia no Enter e fica inerte enquanto o turno está ativo.
+// Campo de digitação com linha de contexto interna: agente, modelo e status.
+// Envia no Enter e fica inerte enquanto o turno está ativo.
 import type { InputRenderable } from "@opentui/core"
-import { createEffect } from "solid-js"
+import { createEffect, For, Show } from "solid-js"
 import type { SessionStore } from "../state/sessionStore"
+import { inputContextSegments } from "./chatIndicators"
+import {
+  colors as theme,
+  INPUT_BAR_GLYPH,
+  INPUT_LAYOUT,
+  inputBlockHeight
+} from "./theme"
 
 const colors = {
   panel: "#141414",
   panelAlt: "#1E1E1E",
   text: "#E5E5E5",
-  muted: "#A3A3A3",
-  accent: "#F59E0B"
+  muted: "#A3A3A3"
 } as const
 
 interface InputBarProps {
   store: SessionStore
   onSubmit: (text: string) => void
+  onValueChange?: (value: string) => void
   onRef?: (input: InputRenderable) => void
 }
 
@@ -28,40 +36,93 @@ export function InputBar(props: InputBarProps) {
     if (inputRef) inputRef.placeholder = value
   })
 
+  const segments = () => {
+    const session = props.store.session()
+    return inputContextSegments(
+      session.agent,
+      session.model,
+      props.store.status(),
+      props.store.busy()
+    )
+  }
+
+  // Uma linha de glifo por linha do bloco: a barra vai do topo à base sem recuo.
+  const barLines = () =>
+    Array.from({ length: inputBlockHeight() }, (_, index) => index)
+
   return (
     <box
       style={{
-        width: "100%",
-        height: 3,
+        // "auto" deixa o flex do pai descontar as margens: com 100% o bloco
+        // estourava à direita e a margem direita ficava invisível.
+        width: "auto",
+        height: inputBlockHeight(),
         flexDirection: "row",
         backgroundColor: props.store.busy() ? colors.panelAlt : colors.panel,
-        paddingLeft: 1,
+        marginTop: INPUT_LAYOUT.marginTop,
+        marginLeft: INPUT_LAYOUT.marginX,
+        marginRight: INPUT_LAYOUT.marginRight,
+        marginBottom: INPUT_LAYOUT.marginBottom,
+        paddingLeft: 0,
         paddingRight: 1,
-        paddingTop: 1,
-        paddingBottom: 1
+        paddingTop: 0,
+        paddingBottom: 0
       }}
     >
-      <text fg={colors.accent}>▎</text>
-      <input
-        ref={renderable => {
-          inputRef = renderable
-          inputRef.placeholder = placeholder(props.store.busy())
-          props.onRef?.(renderable)
+      <box style={{ width: 1, flexDirection: "column", flexGrow: 1 }}>
+        <For each={barLines()}>
+          {() => <text content={INPUT_BAR_GLYPH} fg={theme.accent} />}
+        </For>
+      </box>
+      <box style={{ width: 1 }} />
+      <box
+        style={{
+          flexGrow: 1,
+          minWidth: 0,
+          flexDirection: "column",
+          paddingTop: INPUT_LAYOUT.paddingTop,
+          paddingBottom: INPUT_LAYOUT.paddingBottom,
+          paddingRight: 1
         }}
-        focused
-        placeholder="Digite sua mensagem..."
-        placeholderColor={colors.muted}
-        style={{ flexGrow: 1, backgroundColor: colors.panel, textColor: colors.text }}
-        onSubmit={value => {
-          if (props.store.busy()) return
+      >
+        <box style={{ width: "100%", height: 1, flexDirection: "row" }}>
+          <input
+            ref={renderable => {
+              inputRef = renderable
+              inputRef.placeholder = placeholder(props.store.busy())
+              props.onRef?.(renderable)
+            }}
+            focused
+            placeholder="Digite sua mensagem..."
+            placeholderColor={colors.muted}
+            style={{
+              width: "100%",
+              flexGrow: 1,
+              backgroundColor: colors.panel,
+              textColor: colors.text
+            }}
+            onInput={value => props.onValueChange?.(value)}
+            onSubmit={value => {
+              if (props.store.busy()) return
 
-          const text = value.trim()
-          if (text.length === 0) return
+              // O chamador decide: com o menu aberto, Enter apenas navega e o valor
+              // do campo é sincronizado por ele; sem menu, o texto vira prompt.
+              props.onSubmit(value.trim())
+            }}
+          />
+        </box>
 
-          props.onSubmit(text)
-          if (inputRef) inputRef.value = ""
-        }}
-      />
+        <box style={{ height: INPUT_LAYOUT.gapLines }} />
+
+        <box style={{ width: "100%", height: 1, flexDirection: "row" }}>
+          <text content={segments().agent} fg={theme.accent} />
+          <text content=" · " fg={colors.muted} />
+          <text content={segments().model} fg={colors.muted} />
+          <Show when={segments().status.length > 0}>
+            <text content={` · ${segments().status}`} fg={colors.muted} />
+          </Show>
+        </box>
+      </box>
     </box>
   )
 }

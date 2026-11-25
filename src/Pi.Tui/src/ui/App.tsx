@@ -2,15 +2,25 @@
 // dona do terminal e inicia o Pi.Host em modo --bridge stdio.
 import type { InputRenderable } from "@opentui/core"
 import { useKeyboard, useRenderer } from "@opentui/solid"
-import { onCleanup, onMount } from "solid-js"
+import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
 import {
   BridgeTransport,
   type BridgeHandlers
 } from "../protocol/transport"
 import { EVENT_TYPES, type EventEnvelope, type ProtocolMessage } from "../protocol/schema"
 import { createSessionStore, type SessionStore } from "../state/sessionStore"
+import { commandInputChanged, commandInputEnter, commandInputEscape, type CommandInputResult } from "./commandInput"
 import { ApprovalModal } from "./ApprovalModal"
+import { copyTextToClipboard } from "./clipboard"
 import { ChatView } from "./ChatView"
+import { ctrlCAction, isExitCommand } from "./ctrlC"
+import { CommandMenu } from "./CommandMenu"
+import {
+  initialCommandMenuState,
+  reduceCommandMenu,
+  type CommandMenuAction,
+  type CommandMenuState
+} from "./commandMenuState"
 import { InputBar } from "./InputBar"
 import { StatusBar } from "./StatusBar"
 
@@ -32,6 +42,7 @@ export interface TuiControllerOptions {
   logger?: { log: (message: string, extra?: Record<string, unknown>) => void }
   createTransport?: (handlers: BridgeHandlers) => BridgeTransport
   exit?: (code: number) => void
+  onSigint?: () => void
 }
 
 export class TuiController {
@@ -40,6 +51,7 @@ export class TuiController {
   private readonly logger: NonNullable<TuiControllerOptions["logger"]>
   private readonly createTransport: NonNullable<TuiControllerOptions["createTransport"]>
   private readonly exit: (code: number) => void
+  private readonly onSigint: () => void
 
   private transport: BridgeTransport | undefined
   private closing = false
@@ -51,6 +63,7 @@ export class TuiController {
     this.createTransport =
       options.createTransport ?? (handlers => new BridgeTransport(handlers))
     this.exit = options.exit ?? (code => process.exit(code))
+    this.onSigint = options.onSigint ?? (() => {})
   }
 
   start(): void {
@@ -109,12 +122,6 @@ export class TuiController {
       }
     }
 
-    if (key.ctrl && key.name === "c") {
-      if (this.cancelActive()) return
-      void this.shutdown()
-      return
-    }
-
     if (key.name === "escape" || key.name === "esc") {
       this.cancelActive()
       return
@@ -146,6 +153,11 @@ export class TuiController {
     this.transport?.interrupt(correlationId)
     this.view.focusInput()
     return true
+  }
+
+  // Saída explícita: chamada apenas pelo comando /sair ou /exit.
+  requestExit(): void {
+    void this.shutdown()
   }
 
   clearContext(): void {
@@ -186,7 +198,12 @@ export class TuiController {
     }
   }
 
-  private readonly onExitSignal = (): void => {
+  private readonly onExitSignal = (signal?: NodeJS.Signals): void => {
+    // Ctrl+C nunca encerra: SIGINT segue a mesma decisão do handler de teclado.
+    if (signal === "SIGINT") {
+      this.onSigint()
+      return
+    }
     void this.shutdown()
   }
 
@@ -218,8 +235,62 @@ export function App() {
 
   let inputRef: InputRenderable | undefined
 
+  // Menu "/" puramente visual: estado local, sem tocar no host nem no store.
+  const [menuState, setMenuState] = createSignal<CommandMenuState>(initialCommandMenuState)
+  const menuOpen = () => menuState().open
+
+  const sendMenuAction = (action: CommandMenuAction) => {
+    setMenuState(current => reduceCommandMenu(current, action))
+  }
+
+  const applyInputResult = (result: CommandInputResult) => {
+    setMenuState(result.state)
+    if (inputRef && inputRef.value !== result.value) inputRef.value = result.value
+  }
+
+  // Um único campo de digitação: "/" abre/filtra; apagar o "/" fecha o menu.
+  const onInputValue = (value: string) => {
+    applyInputResult(commandInputChanged(menuState(), value))
+  }
+
+  const onSubmit = (text: string) => {
+    // Saída é só por comando explícito: nunca vai para o host como prompt.
+    if (isExitCommand(inputRef?.value ?? text)) {
+      setMenuState(current => ({
+        ...current,
+        open: false,
+        path: [],
+        query: "",
+        index: 0
+      }))
+      if (inputRef) inputRef.value = ""
+      controller.requestExit()
+      return
+    }
+
+    const wasOpen = menuOpen()
+    const result = commandInputEnter(menuState(), inputRef?.value ?? text)
+    applyInputResult(result)
+
+    if (!wasOpen && text.length > 0) {
+      controller.submit(text)
+      if (inputRef) inputRef.value = ""
+    }
+  }
+
+  let apiKeyWasOpen = false
+  createEffect(() => {
+    const open = menuState().apiKey !== undefined
+    if (open === apiKeyWasOpen) return
+    apiKeyWasOpen = open
+    if (open) inputRef?.blur()
+    else inputRef?.focus()
+  })
+
   const viewPort: ControllerViewPort = {
-    focusInput: () => inputRef?.focus(),
+    focusInput: () => {
+      if (!menuState().apiKey) inputRef?.focus()
+    },
     close: async () => {
       renderer.destroy()
       await Promise.race([
@@ -229,11 +300,124 @@ export function App() {
     }
   }
 
-  const controller = new TuiController({ store, view: viewPort })
+  const controller = new TuiController({
+    store,
+    view: viewPort,
+    onSigint: () => handleCtrlC()
+  })
 
-  useKeyboard(key => controller.onKey(key))
+  const [copyNotice, setCopyNotice] = createSignal("")
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined
+  let lastCtrlCAt = 0
+
+  const showNotice = (message: string) => {
+    setCopyNotice(message)
+    if (noticeTimer) clearTimeout(noticeTimer)
+    noticeTimer = setTimeout(() => setCopyNotice(""), 1800)
+  }
+
+  function handleCtrlC(): void {
+    // Teclado e SIGINT podem chegar juntos do mesmo pressionamento.
+    const now = Date.now()
+    if (now - lastCtrlCAt < 80) return
+    lastCtrlCAt = now
+
+    const readScreen = () => {
+      try {
+        return renderer.getSelection()?.getSelectedText() ?? ""
+      } catch {
+        return ""
+      }
+    }
+    const readInput = () => {
+      try {
+        return inputRef?.getSelectedText() ?? ""
+      } catch {
+        return ""
+      }
+    }
+
+    const screenText = readScreen()
+    const inputText = readInput()
+    const action = ctrlCAction({
+      hasScreenSelection: screenText.trim().length > 0,
+      hasInputSelection: inputText.trim().length > 0,
+      busy: store.busy()
+    })
+
+    if (action === "copy") {
+      const text = screenText.trim().length > 0 ? screenText : inputText
+      void copyTextToClipboard(text, {
+        platform: () => process.platform,
+        osc52: value => {
+          try {
+            return renderer.copyToClipboardOSC52(value)
+          } catch {
+            return false
+          }
+        }
+      }).then(copied => {
+        showNotice(copied ? "Copiado!" : "Não foi possível copiar")
+        if (copied) {
+          try {
+            renderer.clearSelection()
+          } catch {
+            // Seleção já foi liberada pelo terminal.
+          }
+        }
+      })
+      return
+    }
+
+    if (action === "cancel") {
+      controller.cancelActive()
+      showNotice("Turno cancelado")
+      return
+    }
+
+    showNotice("Use /sair para encerrar")
+  }
+
+  useKeyboard(key => {
+    if (key.ctrl && key.name === "c") {
+      key.preventDefault()
+      handleCtrlC()
+      return
+    }
+
+    if (menuOpen()) {
+      if (menuState().apiKey) {
+        if (key.name === "escape" || key.name === "esc") {
+          key.preventDefault()
+          applyInputResult(
+            commandInputEscape(menuState(), inputRef?.value ?? "")
+          )
+        }
+        return
+      }
+
+      if (key.name === "up" || key.name === "down") {
+        key.preventDefault()
+        sendMenuAction({ kind: key.name === "up" ? "up" : "down" })
+        return
+      }
+
+      if (key.name === "escape" || key.name === "esc") {
+        key.preventDefault()
+        applyInputResult(commandInputEscape(menuState(), inputRef?.value ?? ""))
+        return
+      }
+
+      return
+    }
+
+    controller.onKey(key)
+  })
   onMount(() => controller.start())
-  onCleanup(() => controller.dispose())
+  onCleanup(() => {
+    if (noticeTimer) clearTimeout(noticeTimer)
+    controller.dispose()
+  })
 
   return (
     <box
@@ -246,14 +430,18 @@ export function App() {
     >
       <box style={{ width: "100%", flexGrow: 1, flexDirection: "column", minHeight: 0 }}>
         <ChatView store={store} onJump={() => store.dispatch({ kind: "jump", jump: false })} />
+        <Show when={menuOpen()}>
+          <CommandMenu state={menuState()} onAction={sendMenuAction} />
+        </Show>
         <InputBar
           store={store}
-          onSubmit={text => controller.submit(text)}
+          onSubmit={onSubmit}
+          onValueChange={onInputValue}
           onRef={input => (inputRef = input)}
         />
       </box>
 
-      <StatusBar store={store} />
+      <StatusBar store={store} notice={copyNotice()} />
       <ApprovalModal store={store} />
     </box>
   )
