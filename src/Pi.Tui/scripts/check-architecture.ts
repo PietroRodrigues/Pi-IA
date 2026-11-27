@@ -10,6 +10,11 @@ const required = [
   "docs/protocol-v1.md",
   ".env.example",
   ".gitattributes",
+  "src/Pi.Contracts/Constants/PiConstants.cs",
+  "src/Pi.Contracts/Constants/PiConstants.Configuration.cs",
+  "src/Pi.Contracts/Constants/PiConstants.Protocol.cs",
+  "src/Pi.Contracts/Constants/PiConstants.Execution.cs",
+  "src/Pi.Contracts/Constants/PiConstants.Text.cs",
   "src/Pi.Contracts/Protocol/Envelope.cs",
   "src/Pi.Contracts/Protocol/Commands.cs",
   "src/Pi.Contracts/Protocol/Events.cs",
@@ -38,6 +43,15 @@ const required = [
   "src/Pi.Tui/package.json",
   "src/Pi.Tui/tsconfig.json",
   "src/Pi.Tui/src/index.ts",
+  "src/Pi.Tui/src/constants.ts",
+  "src/Pi.Tui/src/constants/environment.ts",
+  "src/Pi.Tui/src/constants/commands.ts",
+  "src/Pi.Tui/src/constants/commandTree.ts",
+  "src/Pi.Tui/src/constants/catalogs.ts",
+  "src/Pi.Tui/src/constants/protocol.ts",
+  "src/Pi.Tui/src/constants/runtime.ts",
+  "src/Pi.Tui/src/constants/visual.ts",
+  "src/Pi.Tui/src/constants/text.ts",
   "src/Pi.Tui/src/protocol/schema.ts",
   "src/Pi.Tui/src/protocol/transport.ts",
   "src/Pi.Tui/src/state/sessionStore.ts",
@@ -110,6 +124,106 @@ for (const path of sources) {
     !relative.endsWith("/ui/App.tsx")
   ) {
     problems.push(`Somente App.tsx pode criar o transporte: ${relative}`)
+  }
+}
+
+// Remove comentários para que documentação (ex.: "SIGINT no Ctrl+C") não
+// dispare as regras; strings são preservadas.
+function stripComments(code: string): string {
+  let result = ""
+  let quote: string | null = null
+  let index = 0
+
+  while (index < code.length) {
+    const char = code[index]
+    const next = code[index + 1]
+
+    if (quote) {
+      result += char
+      if (char === "\\") {
+        result += next ?? ""
+        index += 2
+        continue
+      }
+      if (char === quote) quote = null
+      index += 1
+      continue
+    }
+
+    if (char === '"' || char === "'" || char === "`") {
+      quote = char
+      result += char
+      index += 1
+      continue
+    }
+
+    if (char === "/" && next === "/") {
+      while (index < code.length && code[index] !== "\n") {
+        result += " "
+        index += 1
+      }
+      continue
+    }
+
+    if (char === "/" && next === "*") {
+      result += "  "
+      index += 2
+      while (index < code.length && !(code[index] === "*" && code[index + 1] === "/")) {
+        result += code[index] === "\n" ? "\n" : " "
+        index += 1
+      }
+      result += "  "
+      index += 2
+      continue
+    }
+
+    result += char
+    index += 1
+  }
+
+  return result
+}
+
+// Literais da TUI vivem apenas em src/constants.ts e no diretório src/constants/
+// (dividido por domínio). O contrato em protocol/schema.ts é o espelho intencional
+// do C# e também é isento.
+const literalRules: ReadonlyArray<{ readonly name: string; readonly pattern: RegExp }> = [
+  { name: "cor hexadecimal", pattern: /#[0-9a-fA-F]{6}\b/ },
+  {
+    name: "URL ou endpoint",
+    pattern: /https?:\/\/|\/api\/(?:tags|chat|generate|models)|\/v1\/models|127\.0\.0\.1|localhost:|integrate\.api\.nvidia/
+  },
+  { name: "modelo conhecido", pattern: /\b(?:qwen[0-9.-]*|llama3(?:\.2)?|deepseek-r1|phi4:)\b/i },
+  { name: "variável de ambiente", pattern: /\b(?:PI|OLLAMA|DOTNET)_[A-Z0-9_]+/ },
+  { name: "sinal de processo", pattern: /\bSIG(?:INT|TERM|HUP|BREAK|KILL)\b/ },
+  {
+    name: "comando de barra",
+    pattern: /["'`]\/(?:sair|exit|providers|models|local-models|agents|tools|session|system)(?:\/[\w-]+)*["'`]/
+  },
+  { name: "glifo de UI", pattern: /["'`][^"'`]*[▏▎▌✓✗⚙▶●─—][^"'`]*["'`]/ },
+  { name: "texto em português", pattern: /["'`][^"'`\n]*[\u00C0-\u00FF][^"'`\n]*["'`]/ },
+  { name: "número fixo", pattern: /\b(?:32768|11434|4000|1800|350|160|1234|8080|3000)\b/ },
+  {
+    name: "tipo de protocolo",
+    pattern: /["'`](?:prompt_submit|interrupt_turn|tool_decision|session_switch|session_clear|session_snapshot|stream_delta|tool_request|tool_result|context_metrics|error_event|user_cancel|invalid_message|unsupported_version|empty_prompt|unknown_command|tool_denied|tool_timeout|llm_failure|session_failure|internal)["'`]/
+  }
+]
+
+for (const path of sources) {
+  const relative = path.slice(root.length + 1).replace(/\\/g, "/")
+  const isTuiSource = relative.startsWith("src/Pi.Tui/src/") && /\.(ts|tsx)$/.test(relative)
+  const isConstantFile =
+    relative.endsWith("/src/constants.ts") ||
+    relative.startsWith("src/Pi.Tui/src/constants/")
+  if (!isTuiSource || isConstantFile || relative.endsWith("/protocol/schema.ts")) {
+    continue
+  }
+
+  const code = stripComments(readFileSync(path, "utf8"))
+  for (const rule of literalRules) {
+    if (rule.pattern.test(code)) {
+      problems.push(`Literal de ${rule.name} fora de src/constants.ts/src/constants/: ${relative}`)
+    }
   }
 }
 

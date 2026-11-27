@@ -1,6 +1,7 @@
 // Persistência atômica de snapshots em JSON. Nunca escreve diretamente no arquivo
 // final: grava temporário e troca com File.Move(overwrite: true).
 using System.Text.Json;
+using Pi.Contracts.Constants;
 using Pi.Contracts.Models;
 using Pi.Core.Abstractions;
 using Pi.Infrastructure.Options;
@@ -34,7 +35,8 @@ public sealed class JsonSessionRepository(SessionSettings settings) : ISessionRe
         System.IO.Directory.CreateDirectory(directory);
 
         var final = PathFor(snapshot.Id);
-        var temporary = final + ".tmp-" + Guid.NewGuid().ToString("N");
+        var temporary = final + PiConstants.Paths.TemporarySuffix +
+                        Guid.NewGuid().ToString(PiConstants.Formats.GuidN);
 
         try
         {
@@ -62,7 +64,7 @@ public sealed class JsonSessionRepository(SessionSettings settings) : ISessionRe
             return Task.FromResult<IReadOnlyList<string>>([]);
         }
 
-        var ids = System.IO.Directory.GetFiles(DirectoryPath, "*.json")
+        var ids = System.IO.Directory.GetFiles(DirectoryPath, PiConstants.Paths.JsonSearchPattern)
             .Select(Path.GetFileNameWithoutExtension)
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .OrderBy(id => id, StringComparer.OrdinalIgnoreCase)
@@ -76,11 +78,15 @@ public sealed class JsonSessionRepository(SessionSettings settings) : ISessionRe
     {
         if (string.IsNullOrWhiteSpace(id))
         {
-            throw new ArgumentException("Id de sessão vazio.", nameof(id));
+            throw new ArgumentException(PiConstants.Messages.EmptySessionId, nameof(id));
         }
 
         var safe = new string(id.Select(character =>
-            char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '_').ToArray());
-        return Path.Combine(DirectoryPath, safe + ".json");
+                char.IsLetterOrDigit(character) ||
+                PiConstants.Paths.SessionIdSafeSpecialCharacters.Contains(character)
+            ? character
+            : PiConstants.Paths.SessionIdReplacementCharacter)
+            .ToArray());
+        return Path.Combine(DirectoryPath, safe + PiConstants.Paths.JsonExtension);
     }
 }

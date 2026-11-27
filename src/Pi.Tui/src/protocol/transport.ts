@@ -3,11 +3,19 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
+import {
+  COMMANDS,
+  ENV,
+  LIMITS,
+  PATHS,
+  PROTOCOL,
+  TEXT,
+  TIME
+} from "../constants"
 import { getFileLogger, findRepoRoot, type FileLogger } from "../telemetry/fileLogger"
 import {
   createErrorEvent,
   encodeCommand,
-  ERROR_CODES,
   parseEnvelope,
   type ProtocolMessage
 } from "./schema"
@@ -23,14 +31,14 @@ export type BackendProcessFactory = (
 ) => ChildProcessWithoutNullStreams
 
 function resolveBackendDll(): string {
-  const configured = process.env.PI_BACKEND_DLL
+  const configured = process.env[ENV.backendDll]
   const dll = configured
     ? configured
-    : join(findRepoRoot(), "artifacts", "bin", "Pi.Host", "debug", "Pi.Host.dll")
+    : join(findRepoRoot(), ...PATHS.hostDll)
 
   if (!existsSync(dll)) {
     throw new Error(
-      `Backend C# não encontrado: ${dll}\nRode: dotnet build Pi.sln --configuration Debug`
+      `${TEXT.errors.backendNotFound}${dll}${PROTOCOL.io.newline}${TEXT.errors.buildHint}`
     )
   }
 
@@ -42,17 +50,17 @@ export class BridgeTransport {
   private static hooksInstalled = false
 
   private child: ChildProcessWithoutNullStreams | undefined
-  private buffer = ""
-  private stderrTail = ""
+  private buffer: string = TEXT.common.empty
+  private stderrTail: string = TEXT.common.empty
   private disposed = false
 
   constructor(
     private readonly handlers: BridgeHandlers,
     private readonly logger: FileLogger = getFileLogger(),
     private readonly factory: BackendProcessFactory = (dll, env) =>
-      spawn("dotnet", [dll, "--bridge", "stdio"], {
-        stdio: ["pipe", "pipe", "pipe"],
-        windowsHide: true,
+      spawn(COMMANDS.process.dotnet, [dll, COMMANDS.process.bridge, COMMANDS.process.stdio], {
+        stdio: [...PROTOCOL.io.stdio],
+        windowsHide: PROTOCOL.io.windowsHide,
         env
       })
   ) {
@@ -65,54 +73,61 @@ export class BridgeTransport {
     const dll = resolveBackendDll()
     const env = { ...process.env }
 
-    if (this.logger.enabled && !env.DOTNET_ENVIRONMENT) {
-      env.DOTNET_ENVIRONMENT = "Development"
+    if (this.logger.enabled && !env[ENV.dotnetEnvironment]) {
+      env[ENV.dotnetEnvironment] = ENV.dotnetDevelopment
     }
 
     const child = this.factory(dll, env)
     this.child = child
     BridgeTransport.instances.add(this)
-    this.logger.log("backend iniciado", { dll, pid: child.pid, debug: this.logger.enabled })
+    this.logger.log(TEXT.logs.backendStarted, { dll, pid: child.pid, debug: this.logger.enabled })
 
-    child.stdout.setEncoding("utf8")
-    child.stderr.setEncoding("utf8")
+    child.stdout.setEncoding(PROTOCOL.io.encoding)
+    child.stderr.setEncoding(PROTOCOL.io.encoding)
 
-    child.stdout.on("data", chunk => this.receive(chunk))
-    child.stderr.on("data", chunk => {
+    child.stdout.on(PROTOCOL.io.data, chunk => this.receive(chunk))
+    child.stderr.on(PROTOCOL.io.data, chunk => {
       this.logger.stderr(chunk)
-      this.stderrTail = (this.stderrTail + chunk).slice(-4000)
+      this.stderrTail = (this.stderrTail + chunk).slice(-LIMITS.stderrTailChars)
     })
 
-    child.on("error", error => {
-      this.logger.log("falha ao iniciar o backend", { message: error.message })
-      this.handlers.onEvent(createErrorEvent(ERROR_CODES.internal, `Falha ao iniciar o backend: ${error.message}`))
+    child.on(PROTOCOL.io.error, error => {
+      this.logger.log(TEXT.logs.backendStartFailure, { message: error.message })
+      this.handlers.onEvent(createErrorEvent(
+        PROTOCOL.errorCodes.internal,
+        `${TEXT.errors.backendStartFailed}${error.message}`
+      ))
     })
 
-    child.on("exit", (code, signal) => {
+    child.on(PROTOCOL.io.exit, (code, signal) => {
       BridgeTransport.instances.delete(this)
-      this.logger.log("backend encerrado", { code, signal })
+      this.logger.log(TEXT.logs.backendExited, { code, signal })
       this.handlers.onExit(code, this.stderrTail)
     })
   }
 
   prompt(text: string, correlationId: string, sessionId?: string | null): void {
-    this.send("prompt_submit", { text, sessionId: sessionId ?? null }, correlationId)
+    this.send(PROTOCOL.commandTypes.promptSubmit, { text, sessionId: sessionId ?? null }, correlationId)
   }
 
-  interrupt(correlationId: string, reason = "user_cancel"): void {
-    this.send("interrupt_turn", { reason }, correlationId)
+  interrupt(correlationId: string, reason: string = PROTOCOL.cancelReasons.user): void {
+    this.send(PROTOCOL.commandTypes.interruptTurn, { reason }, correlationId)
   }
 
   decide(toolRequestId: string, approved: boolean, correlationId: string, reason?: string): void {
-    this.send("tool_decision", { toolRequestId, approved, reason: reason ?? null }, correlationId)
+    this.send(
+      PROTOCOL.commandTypes.toolDecision,
+      { toolRequestId, approved, reason: reason ?? null },
+      correlationId
+    )
   }
 
   switchSession(sessionId: string, correlationId: string): void {
-    this.send("session_switch", { sessionId }, correlationId)
+    this.send(PROTOCOL.commandTypes.sessionSwitch, { sessionId }, correlationId)
   }
 
   clear(correlationId: string): void {
-    this.send("session_clear", { clearHistory: true }, correlationId)
+    this.send(PROTOCOL.commandTypes.sessionClear, { clearHistory: true }, correlationId)
   }
 
   dispose(): void {
@@ -122,7 +137,7 @@ export class BridgeTransport {
     const child = this.child
     if (!child || child.exitCode !== null || child.signalCode !== null) return
 
-    this.logger.log("encerrando backend", { pid: child.pid })
+    this.logger.log(TEXT.logs.backendStopping, { pid: child.pid })
 
     try {
       child.stdin.end()
@@ -131,7 +146,7 @@ export class BridgeTransport {
     }
 
     try {
-      child.kill("SIGTERM")
+      child.kill(COMMANDS.signals.terminate)
     } catch {
       // O processo pode já ter saído.
     }
@@ -139,12 +154,12 @@ export class BridgeTransport {
     const timer = setTimeout(() => {
       if (child.exitCode === null && child.signalCode === null) {
         try {
-          child.kill("SIGKILL")
+          child.kill(COMMANDS.signals.kill)
         } catch {
           // Nada mais a fazer.
         }
       }
-    }, 1000)
+    }, TIME.backendKillDelayMs)
     timer.unref?.()
   }
 
@@ -153,7 +168,7 @@ export class BridgeTransport {
     this.buffer += chunk
 
     while (true) {
-      const newline = this.buffer.indexOf("\n")
+      const newline = this.buffer.indexOf(PROTOCOL.io.newline)
       if (newline < 0) break
 
       const line = this.buffer.slice(0, newline).trim()
@@ -168,7 +183,10 @@ export class BridgeTransport {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         this.handlers.onEvent(
-          createErrorEvent(ERROR_CODES.invalidMessage, `Linha inválida do backend: ${message}`)
+          createErrorEvent(
+            PROTOCOL.errorCodes.invalidMessage,
+            `${TEXT.errors.invalidBackendLine}${message}`
+          )
         )
       }
     }
@@ -178,15 +196,15 @@ export class BridgeTransport {
     const child = this.child
     if (!child || child.exitCode !== null || this.disposed) return
 
-    this.logger.log("enviando", { type, correlationId })
-    child.stdin.write(`${encodeCommand(type as never, payload, correlationId)}\n`)
+    this.logger.log(TEXT.logs.sending, { type, correlationId })
+    child.stdin.write(`${encodeCommand(type as never, payload, correlationId)}${PROTOCOL.io.newline}`)
   }
 
   private static installExitHooks(): void {
     if (BridgeTransport.hooksInstalled) return
     BridgeTransport.hooksInstalled = true
 
-    process.on("exit", () => {
+    process.on(PROTOCOL.io.exit, () => {
       for (const client of BridgeTransport.instances) client.dispose()
     })
   }

@@ -2,6 +2,7 @@
 // Falhas são informadas, mas não impedem a subida da aplicação.
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Pi.Contracts.Constants;
 using Pi.Infrastructure.Options;
 
 namespace Pi.Infrastructure.Llm;
@@ -10,12 +11,14 @@ public sealed class OllamaBootstrapper(
     HttpClient httpClient,
     OllamaSettings settings,
     IOllamaProcessLauncher launcher,
+    IOllamaProcessDiscovery discovery,
     ILogger<OllamaBootstrapper> logger)
 {
-    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(PiConstants.Timeouts.ProbeSeconds);
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(PiConstants.Timeouts.PollMilliseconds);
 
     private Process? _ownedProcess;
+    private int _stopped;
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -26,32 +29,60 @@ public sealed class OllamaBootstrapper(
 
         if (await IsReadyAsync(cancellationToken))
         {
-            logger.LogInformation("Ollama já ativo em {BaseUrl}", settings.BaseUrl);
+            logger.LogInformation(PiConstants.Messages.LogOllamaAlreadyActive, settings.BaseUrl);
+            return;
+        }
+
+        // Uma instância local pode estar apenas demorando a subir: nunca
+        // abrimos uma segunda enquanto essa ainda está viva.
+        if (HasLocalProcess())
+        {
+            logger.LogInformation(PiConstants.Messages.LogOllamaLocalDetected, settings.BaseUrl);
+            await WaitUntilReadyAsync(cancellationToken, null);
             return;
         }
 
         var result = launcher.Start(settings.ExecutablePath);
         if (!result.Started)
         {
-            logger.LogError("{Message}", result.Error);
+            logger.LogError(PiConstants.Messages.LogGenericMessage, result.Error);
             return;
         }
 
         _ownedProcess = result.Process;
+        await WaitUntilReadyAsync(cancellationToken, _ownedProcess);
+    }
+
+    private bool HasLocalProcess()
+    {
+        try
+        {
+            return discovery.FindLocal().Count > 0;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, PiConstants.Messages.LogOllamaProcessCheckFailure);
+            return false;
+        }
+    }
+
+    private async Task WaitUntilReadyAsync(CancellationToken cancellationToken, Process? owned)
+    {
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        limit.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, settings.StartupTimeoutSeconds)));
+        limit.CancelAfter(TimeSpan.FromSeconds(
+            Math.Max(PiConstants.Timeouts.MinimumSeconds, settings.StartupTimeoutSeconds)));
 
         while (!limit.IsCancellationRequested)
         {
             if (await IsReadyAsync(limit.Token))
             {
-                logger.LogInformation("Ollama pronto em {BaseUrl}", settings.BaseUrl);
+                logger.LogInformation(PiConstants.Messages.LogOllamaReady, settings.BaseUrl);
                 return;
             }
 
-            if (_ownedProcess is { HasExited: true } exited)
+            if (owned is { HasExited: true } exited)
             {
-                logger.LogError("Ollama encerrou durante a inicialização (código {ExitCode})", exited.ExitCode);
+                logger.LogError(PiConstants.Messages.LogOllamaExitedDuringStartup, exited.ExitCode);
                 return;
             }
 
@@ -67,25 +98,35 @@ public sealed class OllamaBootstrapper(
 
         if (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning("Ollama não respondeu em {BaseUrl} dentro de {Timeout}s", settings.BaseUrl, settings.StartupTimeoutSeconds);
+            logger.LogWarning(
+                PiConstants.Messages.LogOllamaStartupTimeout,
+                settings.BaseUrl,
+                settings.StartupTimeoutSeconds);
         }
     }
 
+    // Opt-in: encerra apenas o processo que o Pi iniciou. Um Ollama já aberto
+    // pelo usuário nunca é encerrado — ele é reutilizado na próxima execução.
     public void StopOnExit()
     {
-        if (!settings.StopOnExit || _ownedProcess is not { HasExited: false } process)
+        if (!settings.StopOnExit || !IsLocal(settings.BaseUrl) ||
+            Interlocked.Exchange(ref _stopped, 1) != 0)
         {
             return;
         }
 
+        var process = _ownedProcess;
+        if (process is null) return;
+
         try
         {
+            if (process.HasExited) return;
             process.Kill(entireProcessTree: true);
-            process.WaitForExit(5000);
+            process.WaitForExit(PiConstants.Timeouts.KillWaitMilliseconds);
         }
-        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+        catch (Exception ex)
         {
-            logger.LogWarning(ex, "Não foi possível encerrar o Ollama iniciado pelo Pi");
+            logger.LogWarning(ex, PiConstants.Messages.LogOllamaStopFailure);
         }
     }
 
@@ -97,7 +138,7 @@ public sealed class OllamaBootstrapper(
             probe.CancelAfter(ProbeTimeout);
 
             using var response = await httpClient.GetAsync(
-                "/api/tags",
+                PiConstants.Endpoints.Tags,
                 HttpCompletionOption.ResponseHeadersRead,
                 probe.Token);
 
@@ -111,5 +152,5 @@ public sealed class OllamaBootstrapper(
 
     private static bool IsLocal(string baseUrl) =>
         Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) &&
-        uri.Host is "localhost" or "127.0.0.1" or "::1" or "[::1]";
+        PiConstants.Endpoints.LocalHosts.Contains(uri.Host, StringComparer.Ordinal);
 }

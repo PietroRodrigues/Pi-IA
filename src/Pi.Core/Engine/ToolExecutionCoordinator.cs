@@ -2,6 +2,7 @@
 // A decisão do usuário chega pelo comando tool_decision da TUI.
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Pi.Contracts.Constants;
 using Pi.Contracts.Protocol;
 using Pi.Core.Abstractions;
 using Pi.Core.Policies;
@@ -12,8 +13,8 @@ public sealed class ToolExecutionCoordinator(
     IEnumerable<IAgentTool> tools,
     IPermissionPolicy policy,
     IEventSink sink,
-    int decisionTimeoutSeconds = 30,
-    int executionTimeoutSeconds = 30,
+    int decisionTimeoutSeconds = PiConstants.Defaults.DecisionTimeoutSeconds,
+    int executionTimeoutSeconds = PiConstants.Defaults.ExecutionTimeoutSeconds,
     WorkspaceSandboxPolicy? sandbox = null)
 {
     private readonly IReadOnlyList<IAgentTool> _tools = tools.ToList();
@@ -64,7 +65,8 @@ public sealed class ToolExecutionCoordinator(
 
         if (tool is null)
         {
-            return Task.FromResult(ToolExecutionResult.Failure($"Ferramenta desconhecida: {toolName}"));
+            return Task.FromResult(ToolExecutionResult.Failure(
+                string.Format(PiConstants.Messages.UnknownToolTemplate, toolName)));
         }
 
         return RunAsync(tool, argumentsJson, correlationId, cancellationToken);
@@ -84,7 +86,7 @@ public sealed class ToolExecutionCoordinator(
         string correlationId,
         CancellationToken cancellationToken)
     {
-        var requestId = Guid.NewGuid().ToString("N");
+        var requestId = Guid.NewGuid().ToString(PiConstants.Formats.GuidN);
         var decision = policy.Decide(tool, input);
         var requiresDecision = decision == PermissionDecision.Ask;
 
@@ -101,7 +103,7 @@ public sealed class ToolExecutionCoordinator(
                 return await FailAsync(
                     requestId,
                     tool,
-                    $"Caminho fora do workspace: {candidatePath}",
+                    string.Format(PiConstants.Messages.PathOutsideWorkspaceTemplate, candidatePath),
                     correlationId,
                     cancellationToken);
             }
@@ -112,7 +114,7 @@ public sealed class ToolExecutionCoordinator(
             return await FailAsync(
                 requestId,
                 tool,
-                $"Ferramenta '{tool.Name}' negada pela política de segurança.",
+                string.Format(PiConstants.Messages.ToolDeniedTemplate, tool.Name),
                 correlationId,
                 cancellationToken);
         }
@@ -122,13 +124,14 @@ public sealed class ToolExecutionCoordinator(
             return await FailAsync(
                 requestId,
                 tool,
-                $"Ferramenta '{tool.Name}' não aprovada (negada ou sem resposta).",
+                string.Format(PiConstants.Messages.ToolNotApprovedTemplate, tool.Name),
                 correlationId,
                 CancellationToken.None);
         }
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, executionTimeoutSeconds)));
+        timeout.CancelAfter(TimeSpan.FromSeconds(
+            Math.Max(PiConstants.Timeouts.MinimumSeconds, executionTimeoutSeconds)));
 
         try
         {
@@ -141,7 +144,7 @@ public sealed class ToolExecutionCoordinator(
             return await FailAsync(
                 requestId,
                 tool,
-                "A ferramenta excedeu o tempo limite.",
+                PiConstants.Messages.ToolTimedOut,
                 correlationId,
                 CancellationToken.None);
         }
@@ -180,7 +183,8 @@ public sealed class ToolExecutionCoordinator(
         var source = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pending[requestId] = source;
 
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(Math.Max(1, decisionTimeoutSeconds)));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(
+            Math.Max(PiConstants.Timeouts.MinimumSeconds, decisionTimeoutSeconds)));
         using var registration = timeout.Token.Register(() => source.TrySetResult(false));
 
         try
@@ -197,7 +201,7 @@ public sealed class ToolExecutionCoordinator(
     {
         path = string.Empty;
         var trimmed = input.Trim();
-        if (!trimmed.StartsWith('{'))
+        if (!trimmed.StartsWith(PiConstants.Json.ObjectStart))
         {
             return false;
         }
@@ -205,7 +209,7 @@ public sealed class ToolExecutionCoordinator(
         try
         {
             using var document = JsonDocument.Parse(trimmed);
-            foreach (var key in new[] { "path", "filePath", "file" })
+            foreach (var key in PiConstants.Json.PathPropertyNames)
             {
                 if (document.RootElement.TryGetProperty(key, out var value) &&
                     value.ValueKind == JsonValueKind.String)

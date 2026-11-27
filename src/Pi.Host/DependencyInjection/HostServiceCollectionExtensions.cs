@@ -1,5 +1,6 @@
 // Registros do Composition Root agrupados por responsabilidade.
 using Microsoft.Extensions.DependencyInjection;
+using Pi.Contracts.Constants;
 using Pi.Contracts.Protocol;
 using Pi.Core.Abstractions;
 using Pi.Core.Engine;
@@ -44,6 +45,7 @@ public static class HostServiceCollectionExtensions
 
         services.AddSingleton<ILlmProvider, OllamaProvider>();
         services.AddSingleton<IOllamaProcessLauncher, OllamaProcessLauncher>();
+        services.AddSingleton<IOllamaProcessDiscovery, OllamaProcessDiscovery>();
         services.AddSingleton<OllamaBootstrapper>();
         return services;
     }
@@ -58,8 +60,8 @@ public static class HostServiceCollectionExtensions
         services.AddSingleton<IAgentTool, ExecuteShellTool>();
 
         var options = new ToolExecutionOptions(
-            30,
-            Math.Max(1, configuration.Tools.ShellTimeoutSeconds));
+            PiConstants.Timeouts.DecisionSeconds,
+            Math.Max(PiConstants.Timeouts.MinimumSeconds, configuration.Tools.ShellTimeoutSeconds));
         services.AddSingleton(options);
 
         // O container preenche tools, política, eventos e sandbox automaticamente.

@@ -1,5 +1,6 @@
 // Logger mínimo em arquivo: mantém o stdout exclusivo para NDJSON.
 using Microsoft.Extensions.Logging;
+using Pi.Contracts.Constants;
 
 namespace Pi.Host.Logging;
 
@@ -21,7 +22,12 @@ internal sealed class HostFileLogger(string path, string category, object gate) 
             return;
         }
 
-        var line = $"{DateTimeOffset.UtcNow:O} [{logLevel}] {category}: {formatter(state, exception)}";
+        var line = string.Format(
+            PiConstants.Messages.LogLineTemplate,
+            DateTimeOffset.UtcNow.ToString(PiConstants.Formats.TimestampRoundtrip),
+            logLevel,
+            category,
+            formatter(state, exception));
         if (exception is not null)
         {
             line += Environment.NewLine + exception;

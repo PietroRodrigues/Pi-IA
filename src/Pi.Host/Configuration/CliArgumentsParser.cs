@@ -1,4 +1,6 @@
 // Interpreta apenas a flag de ponte; o restante segue para o host genérico.
+using Pi.Contracts.Constants;
+
 namespace Pi.Host.Configuration;
 
 public sealed record CliArguments(bool UseBridge, string[] HostArgs);
@@ -15,12 +17,14 @@ public static class CliArgumentsParser
         {
             var argument = args[index];
 
-            if (argument.Equals("--bridge", StringComparison.OrdinalIgnoreCase))
+            if (argument.Equals(PiConstants.Protocol.BridgeFlag, StringComparison.OrdinalIgnoreCase))
             {
                 useBridge = true;
 
                 if (index + 1 < args.Length &&
-                    args[index + 1].Equals("stdio", StringComparison.OrdinalIgnoreCase))
+                    args[index + 1].Equals(
+                        PiConstants.Protocol.BridgeTransportStdio,
+                        StringComparison.OrdinalIgnoreCase))
                 {
                     index++;
                 }
@@ -28,7 +32,7 @@ public static class CliArgumentsParser
                 continue;
             }
 
-            if (argument.StartsWith("--bridge=", StringComparison.OrdinalIgnoreCase))
+            if (argument.StartsWith(PiConstants.Protocol.BridgeFlagPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 useBridge = true;
                 continue;

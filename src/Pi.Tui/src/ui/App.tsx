@@ -4,12 +4,29 @@ import type { InputRenderable } from "@opentui/core"
 import { useKeyboard, useRenderer } from "@opentui/solid"
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js"
 import {
+  COLORS,
+  COMMANDS,
+  LAYOUT,
+  LIMITS,
+  PROTOCOL,
+  ROLES,
+  STATUSES,
+  TEXT,
+  TIME
+} from "../constants"
+import {
   BridgeTransport,
   type BridgeHandlers
 } from "../protocol/transport"
-import { EVENT_TYPES, type EventEnvelope, type ProtocolMessage } from "../protocol/schema"
+import type { EventEnvelope, ProtocolMessage } from "../protocol/schema"
 import { createSessionStore, type SessionStore } from "../state/sessionStore"
-import { commandInputChanged, commandInputEnter, commandInputEscape, type CommandInputResult } from "./commandInput"
+import {
+  commandInputChanged,
+  commandInputEnter,
+  commandInputEscape,
+  menuKeyAction,
+  type CommandInputResult
+} from "./commandInput"
 import { ApprovalModal } from "./ApprovalModal"
 import { copyTextToClipboard } from "./clipboard"
 import { ChatView } from "./ChatView"
@@ -23,8 +40,6 @@ import {
 } from "./commandMenuState"
 import { InputBar } from "./InputBar"
 import { StatusBar } from "./StatusBar"
-
-const EXIT_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP", "SIGBREAK"] as const
 
 export interface KeyPress {
   readonly ctrl: boolean
@@ -67,11 +82,11 @@ export class TuiController {
   }
 
   start(): void {
-    for (const signal of EXIT_SIGNALS) {
+    for (const signal of COMMANDS.signals.exitSignals) {
       process.on(signal, this.onExitSignal)
     }
 
-    this.logger.log("TUI montada")
+    this.logger.log(TEXT.logs.tuiMounted)
 
     this.transport = this.createTransport({
       onEvent: event => this.handleEvent(event),
@@ -82,26 +97,26 @@ export class TuiController {
       this.transport.start()
     } catch (error) {
       this.store.dispatch({
-        kind: "system",
+        kind: COMMANDS.actionKinds.system,
         message: error instanceof Error ? error.message : String(error)
       })
-      this.store.dispatch({ kind: "status", status: "erro" })
+      this.store.dispatch({ kind: COMMANDS.actionKinds.status, status: STATUSES.error })
     }
   }
 
   dispose(): void {
-    for (const signal of EXIT_SIGNALS) {
+    for (const signal of COMMANDS.signals.exitSignals) {
       process.off(signal, this.onExitSignal)
     }
     this.transport?.dispose()
   }
 
   handleEvent(event: ProtocolMessage): void {
-    const eventTypes = new Set<string>(Object.values(EVENT_TYPES))
+    const eventTypes = new Set<string>(Object.values(PROTOCOL.eventTypes))
     if (!eventTypes.has(event.type)) return
 
-    if (event.type === EVENT_TYPES.errorEvent) {
-      this.logger.log("erro do backend", { ...event.payload })
+    if (event.type === PROTOCOL.eventTypes.errorEvent) {
+      this.logger.log(TEXT.logs.backendError, { ...event.payload })
     }
 
     this.store.applyEvent(event as EventEnvelope)
@@ -111,28 +126,36 @@ export class TuiController {
     const pending = this.store.pendingToolRequest()
 
     if (pending) {
-      if (key.name === "y" || key.name === "Y") {
+      if (
+        key.name === COMMANDS.keys.approve ||
+        key.name === COMMANDS.keys.approveUpper
+      ) {
         this.decide(true)
         return
       }
 
-      if (key.name === "n" || key.name === "N" || key.name === "escape" || key.name === "esc") {
+      if (
+        key.name === COMMANDS.keys.deny ||
+        key.name === COMMANDS.keys.denyUpper ||
+        key.name === COMMANDS.keys.escape ||
+        key.name === COMMANDS.keys.esc
+      ) {
         this.decide(false)
         return
       }
     }
 
-    if (key.name === "escape" || key.name === "esc") {
+    if (key.name === COMMANDS.keys.escape || key.name === COMMANDS.keys.esc) {
       this.cancelActive()
       return
     }
 
-    if (key.ctrl && key.name === "p") {
+    if (key.ctrl && key.name === COMMANDS.keys.focusInput) {
       this.view.focusInput()
       return
     }
 
-    if (key.ctrl && key.name === "l") {
+    if (key.ctrl && key.name === COMMANDS.keys.clearContext) {
       this.clearContext()
     }
   }
@@ -141,7 +164,7 @@ export class TuiController {
     if (this.store.busy()) return
 
     const correlationId = crypto.randomUUID()
-    this.store.dispatch({ kind: "submit", correlationId, text })
+    this.store.dispatch({ kind: COMMANDS.actionKinds.submit, correlationId, text })
     this.transport?.prompt(text, correlationId)
   }
 
@@ -149,7 +172,7 @@ export class TuiController {
     const correlationId = this.store.activeRequest()
     if (!correlationId) return false
 
-    this.store.dispatch({ kind: "cancel", correlationId })
+    this.store.dispatch({ kind: COMMANDS.actionKinds.cancel, correlationId })
     this.transport?.interrupt(correlationId)
     this.view.focusInput()
     return true
@@ -161,7 +184,7 @@ export class TuiController {
   }
 
   clearContext(): void {
-    this.store.dispatch({ kind: "clear" })
+    this.store.dispatch({ kind: COMMANDS.actionKinds.clear })
     this.transport?.clear(crypto.randomUUID())
     this.view.focusInput()
   }
@@ -173,34 +196,37 @@ export class TuiController {
     this.transport?.decide(
       pending.toolRequestId,
       approved,
-      this.store.activeRequest() ?? "",
-      approved ? "aprovado pelo usuário" : "negado pelo usuário"
+      this.store.activeRequest() ?? TEXT.common.empty,
+      approved ? TEXT.decisions.approved : TEXT.decisions.denied
     )
-    this.store.dispatch({ kind: "decision", toolRequestId: pending.toolRequestId })
+    this.store.dispatch({ kind: COMMANDS.actionKinds.decision, toolRequestId: pending.toolRequestId })
     this.view.focusInput()
   }
 
   private handleExit(code: number | null, stderrTail: string): void {
     if (this.closing) return
 
-    if (code === 0) {
-      this.store.dispatch({ kind: "status", status: "backend encerrado" })
+    if (code === LIMITS.zero) {
+      this.store.dispatch({ kind: COMMANDS.actionKinds.status, status: STATUSES.backendStopped })
       return
     }
 
-    this.store.dispatch({ kind: "status", status: `backend encerrou (${code ?? "sinal"})` })
+    this.store.dispatch({
+      kind: COMMANDS.actionKinds.status,
+      status: `${STATUSES.backendStoppedWithSignal}${code ?? STATUSES.signalFallback}${TEXT.notices.backendStoppedWithSignalClose}`
+    })
     if (stderrTail.trim().length > 0) {
       this.store.dispatch({
-        kind: "system",
-        message: stderrTail.slice(-500),
-        role: "system"
+        kind: COMMANDS.actionKinds.system,
+        message: stderrTail.slice(-LIMITS.systemTailChars),
+        role: ROLES.system
       })
     }
   }
 
   private readonly onExitSignal = (signal?: NodeJS.Signals): void => {
     // Ctrl+C nunca encerra: SIGINT segue a mesma decisão do handler de teclado.
-    if (signal === "SIGINT") {
+    if (signal === COMMANDS.signals.interrupt) {
       this.onSigint()
       return
     }
@@ -210,21 +236,23 @@ export class TuiController {
   private async shutdown(): Promise<void> {
     if (this.closing) return
     this.closing = true
-    this.logger.log("encerrando TUI")
+    this.logger.log(TEXT.logs.tuiStopping)
 
     const correlationId = this.store.activeRequest()
-    if (correlationId) this.transport?.interrupt(correlationId, "shutdown")
+    if (correlationId) {
+      this.transport?.interrupt(correlationId, PROTOCOL.cancelReasons.shutdown)
+    }
 
     try {
       this.transport?.dispose()
       await this.view.close()
-      this.logger.log("TUI encerrada")
+      this.logger.log(TEXT.logs.tuiStopped)
     } catch (error) {
-      this.logger.log("falha no encerramento", {
+      this.logger.log(TEXT.logs.shutdownFailure, {
         message: error instanceof Error ? error.message : String(error)
       })
     } finally {
-      this.exit(0)
+      this.exit(LIMITS.zero)
     }
   }
 }
@@ -260,10 +288,10 @@ export function App() {
         ...current,
         open: false,
         path: [],
-        query: "",
-        index: 0
+        query: TEXT.common.empty,
+        index: LIMITS.zero
       }))
-      if (inputRef) inputRef.value = ""
+      if (inputRef) inputRef.value = TEXT.common.empty
       controller.requestExit()
       return
     }
@@ -274,7 +302,7 @@ export function App() {
 
     if (!wasOpen && text.length > 0) {
       controller.submit(text)
-      if (inputRef) inputRef.value = ""
+      if (inputRef) inputRef.value = TEXT.common.empty
     }
   }
 
@@ -295,7 +323,7 @@ export function App() {
       renderer.destroy()
       await Promise.race([
         renderer.closed.catch(() => undefined),
-        new Promise<void>(resolve => setTimeout(resolve, 1000))
+        new Promise<void>(resolve => setTimeout(resolve, TIME.rendererCloseTimeoutMs))
       ])
     }
   }
@@ -306,34 +334,34 @@ export function App() {
     onSigint: () => handleCtrlC()
   })
 
-  const [copyNotice, setCopyNotice] = createSignal("")
+  const [copyNotice, setCopyNotice] = createSignal<string>(TEXT.common.empty)
   let noticeTimer: ReturnType<typeof setTimeout> | undefined
-  let lastCtrlCAt = 0
+  let lastCtrlCAt: number = LIMITS.zero
 
   const showNotice = (message: string) => {
     setCopyNotice(message)
     if (noticeTimer) clearTimeout(noticeTimer)
-    noticeTimer = setTimeout(() => setCopyNotice(""), 1800)
+    noticeTimer = setTimeout(() => setCopyNotice(TEXT.common.empty), TIME.noticeDurationMs)
   }
 
   function handleCtrlC(): void {
     // Teclado e SIGINT podem chegar juntos do mesmo pressionamento.
     const now = Date.now()
-    if (now - lastCtrlCAt < 80) return
+    if (now - lastCtrlCAt < TIME.ctrlCDebounceMs) return
     lastCtrlCAt = now
 
     const readScreen = () => {
       try {
-        return renderer.getSelection()?.getSelectedText() ?? ""
+        return renderer.getSelection()?.getSelectedText() ?? TEXT.common.empty
       } catch {
-        return ""
+        return TEXT.common.empty
       }
     }
     const readInput = () => {
       try {
-        return inputRef?.getSelectedText() ?? ""
+        return inputRef?.getSelectedText() ?? TEXT.common.empty
       } catch {
-        return ""
+        return TEXT.common.empty
       }
     }
 
@@ -345,7 +373,7 @@ export function App() {
       busy: store.busy()
     })
 
-    if (action === "copy") {
+    if (action === COMMANDS.ctrlC.copy) {
       const text = screenText.trim().length > 0 ? screenText : inputText
       void copyTextToClipboard(text, {
         platform: () => process.platform,
@@ -357,7 +385,7 @@ export function App() {
           }
         }
       }).then(copied => {
-        showNotice(copied ? "Copiado!" : "Não foi possível copiar")
+        showNotice(copied ? TEXT.notices.copied : TEXT.notices.copyFailed)
         if (copied) {
           try {
             renderer.clearSelection()
@@ -369,17 +397,17 @@ export function App() {
       return
     }
 
-    if (action === "cancel") {
+    if (action === COMMANDS.ctrlC.cancel) {
       controller.cancelActive()
-      showNotice("Turno cancelado")
+      showNotice(TEXT.notices.turnCancelled)
       return
     }
 
-    showNotice("Use /sair para encerrar")
+    showNotice(TEXT.notices.exitHint)
   }
 
   useKeyboard(key => {
-    if (key.ctrl && key.name === "c") {
+    if (key.ctrl && key.name === COMMANDS.keys.copy) {
       key.preventDefault()
       handleCtrlC()
       return
@@ -387,24 +415,31 @@ export function App() {
 
     if (menuOpen()) {
       if (menuState().apiKey) {
-        if (key.name === "escape" || key.name === "esc") {
+        if (key.name === COMMANDS.keys.escape || key.name === COMMANDS.keys.esc) {
           key.preventDefault()
           applyInputResult(
-            commandInputEscape(menuState(), inputRef?.value ?? "")
+            commandInputEscape(menuState(), inputRef?.value ?? TEXT.common.empty)
           )
         }
         return
       }
 
-      if (key.name === "up" || key.name === "down") {
+      const navigation = menuKeyAction(key.name)
+      if (navigation) {
         key.preventDefault()
-        sendMenuAction({ kind: key.name === "up" ? "up" : "down" })
+        if (navigation === COMMANDS.actionKinds.enter) {
+          onSubmit(inputRef?.value ?? TEXT.common.empty)
+        } else if (navigation === COMMANDS.actionKinds.escape) {
+          applyInputResult(commandInputEscape(menuState(), inputRef?.value ?? TEXT.common.empty))
+        } else {
+          sendMenuAction({ kind: navigation })
+        }
         return
       }
 
-      if (key.name === "escape" || key.name === "esc") {
+      if (key.name === COMMANDS.keys.escape || key.name === COMMANDS.keys.esc) {
         key.preventDefault()
-        applyInputResult(commandInputEscape(menuState(), inputRef?.value ?? ""))
+        applyInputResult(commandInputEscape(menuState(), inputRef?.value ?? TEXT.common.empty))
         return
       }
 
@@ -422,14 +457,21 @@ export function App() {
   return (
     <box
       style={{
-        width: "100%",
-        height: "100%",
-        flexDirection: "column",
-        backgroundColor: "#0A0A0A"
+        width: LAYOUT.fullWidth,
+        height: LAYOUT.fullHeight,
+        flexDirection: COMMANDS.apiValues.column,
+        backgroundColor: COLORS.background
       }}
     >
-      <box style={{ width: "100%", flexGrow: 1, flexDirection: "column", minHeight: 0 }}>
-        <ChatView store={store} onJump={() => store.dispatch({ kind: "jump", jump: false })} />
+      <box
+        style={{
+          width: LAYOUT.fullWidth,
+          flexGrow: LAYOUT.one,
+          flexDirection: COMMANDS.apiValues.column,
+          minHeight: LAYOUT.zero
+        }}
+      >
+        <ChatView store={store} onJump={() => store.dispatch({ kind: COMMANDS.actionKinds.jump, jump: false })} />
         <Show when={menuOpen()}>
           <CommandMenu state={menuState()} onAction={sendMenuAction} />
         </Show>

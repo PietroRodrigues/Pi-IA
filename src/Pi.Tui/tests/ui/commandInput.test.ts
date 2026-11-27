@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test"
 import {
   commandInputChanged,
   commandInputEnter,
-  commandInputEscape
+  commandInputEscape,
+  menuKeyAction
 } from "../../src/ui/commandInput"
 import { initialCommandMenuState, visibleItems } from "../../src/ui/commandMenuState"
 
@@ -75,6 +76,15 @@ describe("campo de chat que controla o menu de comandos", () => {
     expect(result.state.path).toEqual([])
     expect(result.state.open).toBe(true)
     expect(result.value).toBe("/")
+  })
+
+  it("mapeia as setas do menu para navegação, confirmação e volta", () => {
+    expect(menuKeyAction("up")).toBe("up")
+    expect(menuKeyAction("down")).toBe("down")
+    expect(menuKeyAction("right")).toBe("enter")
+    expect(menuKeyAction("left")).toBe("escape")
+    expect(menuKeyAction("enter")).toBeUndefined()
+    expect(menuKeyAction("c")).toBeUndefined()
   })
 
   it("não mexe no estado quando o campo não é um comando", () => {

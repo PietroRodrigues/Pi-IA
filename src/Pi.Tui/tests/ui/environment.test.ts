@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test"
+import { TEXT } from "../../src/constants"
 import {
   detectEnvironment,
   elevatedLabel,
   emptyEnvironment,
   environmentLabel,
   parseGitBranch,
-  SHORTCUTS_LABEL,
   type EnvironmentDeps
 } from "../../src/ui/environment"
 
@@ -101,9 +101,9 @@ describe("ambiente do terminal", () => {
   })
 
   it("expõe os atalhos exibidos no rodapé", () => {
-    expect(SHORTCUTS_LABEL).toContain("Ctrl+C")
-    expect(SHORTCUTS_LABEL).toContain("Ctrl+L")
-    expect(SHORTCUTS_LABEL).toContain("/sair")
-    expect(SHORTCUTS_LABEL).not.toContain("Ctrl+Q")
+    expect(TEXT.environment.shortcuts).toContain("Ctrl+C")
+    expect(TEXT.environment.shortcuts).toContain("Ctrl+L")
+    expect(TEXT.environment.shortcuts).toContain("/sair")
+    expect(TEXT.environment.shortcuts).not.toContain("Ctrl+Q")
   })
 })

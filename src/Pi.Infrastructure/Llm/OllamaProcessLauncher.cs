@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Pi.Contracts.Constants;
 
 namespace Pi.Infrastructure.Llm;
 
@@ -28,11 +29,12 @@ public sealed class OllamaProcessLauncher(ILogger<OllamaProcessLauncher> logger)
             var looksLikePath = candidate.Contains(Path.DirectorySeparatorChar) ||
                                 candidate.Contains(Path.AltDirectorySeparatorChar) ||
                                 (OperatingSystem.IsWindows() &&
-                                 candidate.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
+                                 candidate.EndsWith(PiConstants.ProcessNames.WindowsExecutableSuffix,
+                                     StringComparison.OrdinalIgnoreCase));
 
             if (looksLikePath && !File.Exists(candidate))
             {
-                attempts.Add($"{candidate} (arquivo não encontrado)");
+                attempts.Add(string.Format(PiConstants.Messages.MissingFileAttemptTemplate, candidate));
                 continue;
             }
 
@@ -40,7 +42,7 @@ public sealed class OllamaProcessLauncher(ILogger<OllamaProcessLauncher> logger)
             {
                 var startInfo = new ProcessStartInfo(candidate)
                 {
-                    Arguments = "serve",
+                    Arguments = PiConstants.Commands.OllamaServe,
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     // Nunca herda o stdout: ele pertence ao NDJSON lido pela TUI.
@@ -51,7 +53,7 @@ public sealed class OllamaProcessLauncher(ILogger<OllamaProcessLauncher> logger)
                 var process = Process.Start(startInfo);
                 if (process is null)
                 {
-                    attempts.Add($"{candidate} (nenhum processo criado)");
+                    attempts.Add(string.Format(PiConstants.Messages.NoProcessCreatedAttemptTemplate, candidate));
                     continue;
                 }
 
@@ -60,19 +62,21 @@ public sealed class OllamaProcessLauncher(ILogger<OllamaProcessLauncher> logger)
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
 
-                logger.LogInformation("Ollama iniciado em segundo plano via {Executable}", candidate);
+                logger.LogInformation(PiConstants.Messages.LogOllamaStarted, candidate);
                 return OllamaLaunchResult.Ok(process);
             }
             catch (Exception ex) when (ex is Win32Exception or IOException or InvalidOperationException
                                           or UnauthorizedAccessException)
             {
-                attempts.Add($"{candidate} ({ex.Message})");
+                attempts.Add(string.Format(PiConstants.Messages.FailedAttemptTemplate, candidate, ex.Message));
             }
         }
 
-        return OllamaLaunchResult.Fail(
-            "Não foi possível iniciar o Ollama. Instale em https://ollama.com/download " +
-            "ou configure OLLAMA_EXECUTABLE. Tentativas: " + string.Join("; ", attempts));
+        return OllamaLaunchResult.Fail(string.Format(
+            PiConstants.Messages.OllamaLaunchFailureTemplate,
+            PiConstants.Endpoints.OllamaDownload,
+            PiConstants.Env.OllamaExecutable,
+            string.Join(PiConstants.Protocol.AttemptsSeparator, attempts)));
     }
 
     private static IEnumerable<string> Candidates(string? configuredPath)
@@ -83,25 +87,36 @@ public sealed class OllamaProcessLauncher(ILogger<OllamaProcessLauncher> logger)
             yield break;
         }
 
-        yield return "ollama";
+        yield return PiConstants.ProcessNames.Ollama;
 
         if (OperatingSystem.IsWindows())
         {
             var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            yield return Path.Combine(local, "Programs", "Ollama", "ollama.exe");
-            yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Ollama", "ollama.exe");
+            yield return Path.Combine(
+                local,
+                PiConstants.Paths.ProgramsFolderName,
+                PiConstants.Paths.OllamaFolderName,
+                PiConstants.ProcessNames.OllamaWindowsExecutable);
+            yield return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                PiConstants.Paths.OllamaFolderName,
+                PiConstants.ProcessNames.OllamaWindowsExecutable);
         }
         else if (OperatingSystem.IsMacOS())
         {
-            yield return "/Applications/Ollama.app/Contents/Resources/ollama";
-            yield return "/usr/local/bin/ollama";
-            yield return "/opt/homebrew/bin/ollama";
+            yield return PiConstants.Paths.OllamaMacApplicationPath;
+            yield return PiConstants.Paths.OllamaUsrLocalBinPath;
+            yield return PiConstants.Paths.OllamaHomeBrewBinPath;
         }
         else
         {
-            yield return "/usr/local/bin/ollama";
-            yield return "/usr/bin/ollama";
-            yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ollama", "bin", "ollama");
+            yield return PiConstants.Paths.OllamaUsrLocalBinPath;
+            yield return PiConstants.Paths.OllamaUsrBinPath;
+            yield return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                PiConstants.Paths.OllamaHomeFolderName,
+                PiConstants.Paths.BinFolderName,
+                PiConstants.ProcessNames.Ollama);
         }
     }
 }

@@ -1,11 +1,14 @@
 // Leitura assíncrona de stdin com buffer limitado: uma linha NDJSON por mensagem.
 using System.Text;
+using Pi.Contracts.Constants;
 
 namespace Pi.Host.Bridge;
 
-public sealed class NdjsonReader(TextReader reader, int maxLineLength = 1_048_576)
+public sealed class NdjsonReader(
+    TextReader reader,
+    int maxLineLength = PiConstants.Limits.MaxNdjsonLineLength)
 {
-    private readonly char[] _chunk = new char[4096];
+    private readonly char[] _chunk = new char[PiConstants.Limits.NdjsonChunkSize];
     private readonly StringBuilder _line = new();
     private int _start;
     private int _end;
@@ -27,7 +30,7 @@ public sealed class NdjsonReader(TextReader reader, int maxLineLength = 1_048_57
                 }
             }
 
-            var newline = Array.IndexOf(_chunk, '\n', _start, _end - _start);
+            var newline = Array.IndexOf(_chunk, PiConstants.Protocol.LineFeed, _start, _end - _start);
             if (newline >= 0)
             {
                 _line.Append(_chunk, _start, newline - _start);
@@ -40,14 +43,16 @@ public sealed class NdjsonReader(TextReader reader, int maxLineLength = 1_048_57
 
             if (_line.Length > maxLineLength)
             {
-                throw new InvalidDataException($"Linha NDJSON acima do limite de {maxLineLength} caracteres.");
+                throw new InvalidDataException(string.Format(
+                    PiConstants.Messages.NdjsonLineTooLongTemplate,
+                    maxLineLength));
             }
         }
     }
 
     private string TakeLine()
     {
-        var value = _line.ToString().TrimEnd('\r');
+        var value = _line.ToString().TrimEnd(PiConstants.Protocol.CarriageReturn);
         _line.Clear();
         return value;
     }

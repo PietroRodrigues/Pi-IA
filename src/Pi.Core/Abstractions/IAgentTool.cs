@@ -1,5 +1,7 @@
 // Ferramenta do agente com metadados de risco usados pela política de permissão.
 // Propriedades adicionais têm implementação padrão para não quebrar ferramentas antigas.
+using Pi.Contracts.Constants;
+
 namespace Pi.Core.Abstractions;
 
 public enum ToolRisk
@@ -19,7 +21,7 @@ public interface IAgentTool
 
     ToolRisk RiskLevel => Risk;
 
-    string ParametersSchema => "{\"type\":\"object\",\"properties\":{}}";
+    string ParametersSchema => PiConstants.Json.EmptyToolSchema;
 
     bool CanHandle(string input);
 

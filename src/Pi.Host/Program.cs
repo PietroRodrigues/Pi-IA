@@ -33,6 +33,11 @@ builder.Services
     .AddHostBridge();
 
 var host = builder.Build();
+var bootstrapper = host.Services.GetRequiredService<OllamaBootstrapper>();
+
+// Rede de segurança: o shutdown normal já chama StopOnExit no finally, mas
+// saídas controladas pelo processo também devem limpar o Ollama local.
+AppDomain.CurrentDomain.ProcessExit += (_, _) => bootstrapper.StopOnExit();
 
 Console.CancelKeyPress += (_, eventArgs) =>
 {
@@ -44,7 +49,6 @@ await host.StartAsync();
 
 try
 {
-    var bootstrapper = host.Services.GetRequiredService<OllamaBootstrapper>();
     await bootstrapper.StartAsync(CancellationToken.None);
 
     await host.Services.GetRequiredService<AgentOrchestrator>().InitializeAsync(CancellationToken.None);

@@ -1,6 +1,7 @@
 // Leitura paginada por linha com limite de bytes e validação de sandbox.
 using System.Text;
 using System.Text.Json;
+using Pi.Contracts.Constants;
 using Pi.Core.Abstractions;
 using Pi.Core.Policies;
 using Pi.Infrastructure.Options;
@@ -11,40 +12,24 @@ public sealed class ReadFileTool(
     WorkspaceSandboxPolicy sandbox,
     ToolSettings settings) : IAgentTool
 {
-    private const string DescriptionText =
-        "Lê um arquivo de texto dentro do workspace, com paginação opcional por linha e limite de bytes.";
-
-    private const string SchemaText = """
-        {
-          "type": "object",
-          "properties": {
-            "path": { "type": "string", "description": "Caminho relativo à raiz do workspace." },
-            "offset": { "type": "integer", "minimum": 0, "default": 0 },
-            "limit": { "type": "integer", "minimum": 1, "maximum": 500, "default": 200 },
-            "maxBytes": { "type": "integer", "minimum": 256 }
-          },
-          "required": ["path"]
-        }
-        """;
-
-    public string Name => "read_file";
+    public string Name => PiConstants.Tools.ReadFileName;
 
     public ToolRisk Risk => ToolRisk.ReadOnly;
 
-    public string Description => DescriptionText;
+    public string Description => PiConstants.Json.ReadFileDescription;
 
     public ToolRisk RiskLevel => ToolRisk.ReadOnly;
 
-    public string ParametersSchema => SchemaText;
+    public string ParametersSchema => PiConstants.Json.ReadFileSchema;
 
     public bool CanHandle(string input) =>
-        input.StartsWith("leia ", StringComparison.OrdinalIgnoreCase) ||
-        input.StartsWith("read ", StringComparison.OrdinalIgnoreCase);
+        PiConstants.Tools.ReadPrefixes.Any(prefix =>
+            input.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
 
     // Caminho legado: mantém compatibilidade com prompts do tipo "leia arquivo.txt 0 20".
     public async Task<string> ExecuteAsync(string input, CancellationToken cancellationToken = default)
     {
-        if (input.TrimStart().StartsWith('{'))
+        if (input.TrimStart().StartsWith(PiConstants.Json.ObjectStart))
         {
             var result = await ExecuteResultAsync(input, cancellationToken);
             return result.DisplayText;
@@ -53,7 +38,7 @@ public sealed class ReadFileTool(
         var tokens = ToolInput.Tokens(ToolInput.Argument(input));
         if (tokens.Count == 0)
         {
-            return "Informe o caminho do arquivo após 'leia'.";
+            return PiConstants.Messages.MissingFilePath;
         }
 
         var arguments = JsonSerializer.Serialize(new
@@ -63,8 +48,11 @@ public sealed class ReadFileTool(
                 ? Math.Max(0, parsedOffset)
                 : 0,
             limit = tokens.Count > 2 && int.TryParse(tokens[2], out var parsedLimit)
-                ? Math.Clamp(parsedLimit, 1, 500)
-                : 200
+                ? Math.Clamp(
+                    parsedLimit,
+                    PiConstants.Limits.ReadFileMinLines,
+                    PiConstants.Limits.ReadFileMaxLines)
+                : PiConstants.Limits.ReadFileDefaultLines
         });
 
         var legacyResult = await ExecuteResultAsync(arguments, cancellationToken);
@@ -82,25 +70,29 @@ public sealed class ReadFileTool(
         }
         catch (JsonException)
         {
-            return Task.FromResult(ToolExecutionResult.Failure(
-                "Argumentos inválidos. Esperado JSON com o campo 'path'."));
+            return Task.FromResult(ToolExecutionResult.Failure(string.Format(
+                PiConstants.Messages.InvalidJsonArgumentsTemplate,
+                PiConstants.Json.Path)));
         }
 
         using (document)
         {
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object ||
-                !root.TryGetProperty("path", out var pathElement) ||
+                !root.TryGetProperty(PiConstants.Json.Path, out var pathElement) ||
                 pathElement.ValueKind != JsonValueKind.String)
             {
-                return Task.FromResult(ToolExecutionResult.Failure(
-                    "O campo 'path' é obrigatório e deve ser um texto."));
+                return Task.FromResult(ToolExecutionResult.Failure(string.Format(
+                    PiConstants.Messages.MissingFieldTemplate,
+                    PiConstants.Json.Path)));
             }
 
             var requestedPath = pathElement.GetString() ?? string.Empty;
             if (requestedPath.Length == 0)
             {
-                return Task.FromResult(ToolExecutionResult.Failure("O campo 'path' não pode ser vazio."));
+                return Task.FromResult(ToolExecutionResult.Failure(string.Format(
+                    PiConstants.Messages.EmptyFieldTemplate,
+                    PiConstants.Json.Path)));
             }
 
             string path;
@@ -115,23 +107,31 @@ public sealed class ReadFileTool(
 
             if (Directory.Exists(path))
             {
-                return Task.FromResult(ToolExecutionResult.Failure(
-                    $"O caminho é um diretório, não um arquivo: {requestedPath}"));
+                return Task.FromResult(ToolExecutionResult.Failure(string.Format(
+                    PiConstants.Messages.DirectoryInsteadOfFileTemplate,
+                    requestedPath)));
             }
 
             if (!File.Exists(path))
             {
-                return Task.FromResult(ToolExecutionResult.Failure(
-                    $"Arquivo não encontrado: {requestedPath}"));
+                return Task.FromResult(ToolExecutionResult.Failure(string.Format(
+                    PiConstants.Messages.FileNotFoundTemplate,
+                    requestedPath)));
             }
 
-            var offset = ReadInt(root, "offset", 0);
-            var limit = ReadInt(root, "limit", 200);
-            var maxBytes = ReadInt(root, "maxBytes", settings.MaxReadBytes);
+            var offset = ReadInt(root, PiConstants.Json.Offset, 0);
+            var limit = ReadInt(root, PiConstants.Json.Limit, PiConstants.Limits.ReadFileDefaultLines);
+            var maxBytes = ReadInt(root, PiConstants.Json.MaxBytes, settings.MaxReadBytes);
 
             offset = Math.Max(0, offset);
-            limit = Math.Clamp(limit, 1, 500);
-            maxBytes = Math.Clamp(maxBytes, 256, Math.Max(256, settings.MaxReadBytes));
+            limit = Math.Clamp(
+                limit,
+                PiConstants.Limits.ReadFileMinLines,
+                PiConstants.Limits.ReadFileMaxLines);
+            maxBytes = Math.Clamp(
+                maxBytes,
+                PiConstants.Limits.ReadFileMinBytes,
+                Math.Max(PiConstants.Limits.ReadFileMinBytes, settings.MaxReadBytes));
 
             var output = new StringBuilder();
             var bytes = 0;
@@ -141,11 +141,15 @@ public sealed class ReadFileTool(
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var rendered = $"{lineNumber,5}: {line}{Environment.NewLine}";
+                var rendered = string.Format(
+                    PiConstants.Messages.ReadFileLineTemplate,
+                    lineNumber,
+                    line,
+                    Environment.NewLine);
                 var size = Encoding.UTF8.GetByteCount(rendered);
                 if (bytes + size > maxBytes)
                 {
-                    output.AppendLine($"... limite de {maxBytes} bytes atingido.");
+                    output.AppendLine(string.Format(PiConstants.Messages.ReadByteLimitTemplate, maxBytes));
                     break;
                 }
 

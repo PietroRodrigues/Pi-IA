@@ -1,17 +1,13 @@
 // Restringe ferramentas ao diretório do projeto e bloqueia comandos perigosos.
 // Caminhos fora da raiz (inclusive via ..) são negados antes de qualquer I/O.
 using System.Text.Json;
+using Pi.Contracts.Constants;
 using Pi.Core.Abstractions;
 
 namespace Pi.Core.Policies;
 
 public sealed class WorkspaceSandboxPolicy : IPermissionPolicy
 {
-    private static readonly string[] DangerousCommands =
-    [
-        "rm -rf", "del /s", "format", "mkfs", "diskpart", "shutdown",
-        "taskkill /f", "stop-process -force", "reg delete", "curl ", "wget "
-    ];
 
     private readonly string _root;
     private readonly IReadOnlyList<string> _allowedFolders;
@@ -72,7 +68,8 @@ public sealed class WorkspaceSandboxPolicy : IPermissionPolicy
     {
         if (!IsAllowed(path))
         {
-            throw new UnauthorizedAccessException($"Caminho fora do workspace: {path}");
+            throw new UnauthorizedAccessException(
+                string.Format(PiConstants.Messages.PathOutsideWorkspaceTemplate, path));
         }
 
         return Normalize(path, _root);
@@ -81,7 +78,8 @@ public sealed class WorkspaceSandboxPolicy : IPermissionPolicy
     public static bool IsDangerous(string input)
     {
         var normalized = input.ToLowerInvariant();
-        return DangerousCommands.Any(command => normalized.Contains(command, StringComparison.Ordinal));
+        return PiConstants.Security.DangerousCommands.Any(command =>
+            normalized.Contains(command, StringComparison.Ordinal));
     }
 
     private static string Normalize(string path, string? baseDirectory = null)
@@ -108,12 +106,12 @@ public sealed class WorkspaceSandboxPolicy : IPermissionPolicy
     {
         var trimmed = input.Trim();
 
-        if (trimmed.StartsWith('{'))
+        if (trimmed.StartsWith(PiConstants.Json.ObjectStart))
         {
             try
             {
                 using var document = JsonDocument.Parse(trimmed);
-                foreach (var key in new[] { "path", "filePath", "file" })
+                foreach (var key in PiConstants.Json.PathPropertyNames)
                 {
                     if (document.RootElement.TryGetProperty(key, out var value) &&
                         value.ValueKind == JsonValueKind.String)
@@ -130,7 +128,9 @@ public sealed class WorkspaceSandboxPolicy : IPermissionPolicy
             return null;
         }
 
-        var parts = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var parts = trimmed.Split(
+            PiConstants.Protocol.Space,
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return parts.Length > 1 ? parts[1] : null;
     }
 }

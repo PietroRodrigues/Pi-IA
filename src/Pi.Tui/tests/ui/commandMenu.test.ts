@@ -36,7 +36,6 @@ describe('menu de comandos "/"', () => {
       "/models",
       "/local-models",
       "/agents",
-      "/tools",
       "/session",
       "/system"
     ])
@@ -145,14 +144,18 @@ describe('menu de comandos "/"', () => {
   it("mostra rótulos curtos e o caminho atual no cabeçalho dos submenus", () => {
     const expected: Record<string, readonly string[]> = {
       "/agents": ["list", "behavior"],
-      "/tools": ["list", "safety"],
       "/session": ["list", "new", "clear", "summarize"],
-      "/system": ["appearance", "settings", "health"]
+      "/system": ["appearance", "settings", "health"],
+      "/system/settings": ["current", "tools"],
+      "/system/settings/tools": ["list", "safety"]
     }
 
     for (const [command, children] of Object.entries(expected)) {
-      let state = open(command.slice(1))
-      state = reduceCommandMenu(state, { kind: "enter" })
+      const segments = command.slice(1).split("/")
+      const path = segments.map(
+        (_, index) => `/${segments.slice(0, index + 1).join("/")}`
+      )
+      const state = descend(open(), path)
 
       expect(menuHeaderLabel(state)).toBe(`${command} · ${children.length} item(ns)`)
       expect(visibleItems(state).map(item => item.label)).toEqual([...children])
@@ -165,15 +168,38 @@ describe('menu de comandos "/"', () => {
   it("mantém os comandos completos na raiz", () => {
     const state = open()
 
-    expect(menuHeaderLabel(state)).toBe("/ · 7 item(ns)")
+    expect(menuHeaderLabel(state)).toBe("/ · 6 item(ns)")
     expect(visibleItems(state).map(item => item.label)).toEqual([
       "/providers",
       "/models",
       "/local-models",
       "/agents",
-      "/tools",
       "/session",
       "/system"
     ])
+  })
+
+  it("alterna ferramentas individualmente e preserva o estado na sessão", () => {
+    let state = descend(open(), [
+      "/system",
+      "/system/settings",
+      "/system/settings/tools",
+      "/system/settings/tools/list"
+    ])
+    const initial = [...state.enabledTools]
+
+    expect(initial).toContain("read_file")
+    expect(initial).not.toContain("execute_shell")
+
+    state = reduceCommandMenu(state, { kind: "enter" })
+    expect(state.open).toBe(true)
+    expect(state.enabledTools).not.toContain("read_file")
+
+    state = reduceCommandMenu(state, { kind: "enter" })
+    expect([...state.enabledTools].sort()).toEqual([...initial].sort())
+
+    state = reduceCommandMenu(state, { kind: "close" })
+    expect(state.open).toBe(false)
+    expect([...state.enabledTools].sort()).toEqual([...initial].sort())
   })
 })

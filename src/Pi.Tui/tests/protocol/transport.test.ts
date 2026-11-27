@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import type { ChildProcessWithoutNullStreams } from "node:child_process"
 import { join } from "node:path"
-import { createEnvelope, EVENT_TYPES, type ProtocolMessage } from "../../src/protocol/schema"
+import { PROTOCOL } from "../../src/constants"
+import { createEnvelope, type ProtocolMessage } from "../../src/protocol/schema"
 import { BridgeTransport } from "../../src/protocol/transport"
 import type { FileLogger } from "../../src/telemetry/fileLogger"
 
@@ -70,9 +71,9 @@ describe("transporte NDJSON", () => {
     const events: ProtocolMessage[] = []
     const transport = makeTransport(new FakeChild(), events)
 
-    const first = JSON.stringify(createEnvelope(EVENT_TYPES.streamDelta, { text: "Ol" }, "r1"))
+    const first = JSON.stringify(createEnvelope(PROTOCOL.eventTypes.streamDelta, { text: "Ol" }, "r1"))
     const second = JSON.stringify(
-      createEnvelope(EVENT_TYPES.streamDelta, { text: "á", final: true }, "r1")
+      createEnvelope(PROTOCOL.eventTypes.streamDelta, { text: "á", final: true }, "r1")
     )
 
     transport.receive(`${first.slice(0, 20)}`)
@@ -90,7 +91,7 @@ describe("transporte NDJSON", () => {
     transport.receive("linha-invalida\n")
 
     expect(events).toHaveLength(1)
-    expect(events[0].type).toBe(EVENT_TYPES.errorEvent)
+    expect(events[0].type).toBe(PROTOCOL.eventTypes.errorEvent)
   })
 
   it("envia prompt_submit com correlationId no stdin do backend", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { createEnvelope, EVENT_TYPES, type EventEnvelope } from "../../src/protocol/schema"
+import { PROTOCOL } from "../../src/constants"
+import { createEnvelope, type EventEnvelope } from "../../src/protocol/schema"
 import { initialSessionState, reduceSession, type SessionState } from "../../src/state/reducers"
 
 function event(type: string, payload: unknown, correlationId = ""): EventEnvelope {
@@ -33,15 +34,15 @@ describe("redutor da sessão", () => {
 
     state = reduceSession(state, {
       kind: "event",
-      event: event(EVENT_TYPES.streamDelta, { text: "Ol" }, "r1")
+      event: event(PROTOCOL.eventTypes.streamDelta, { text: "Ol" }, "r1")
     })
     state = reduceSession(state, {
       kind: "event",
-      event: event(EVENT_TYPES.streamDelta, { text: "á" }, "r1")
+      event: event(PROTOCOL.eventTypes.streamDelta, { text: "á" }, "r1")
     })
     state = reduceSession(state, {
       kind: "event",
-      event: event(EVENT_TYPES.streamDelta, { text: "", final: true }, "r1")
+      event: event(PROTOCOL.eventTypes.streamDelta, { text: "", final: true }, "r1")
     })
 
     expect(assistantText(state, "r1")).toBe("Olá")
@@ -60,14 +61,14 @@ describe("redutor da sessão", () => {
     state = reduceSession(state, { kind: "cancel", correlationId: "r1" })
     state = reduceSession(state, {
       kind: "event",
-      event: event(EVENT_TYPES.streamDelta, { text: "IGNORADO" }, "r1")
+      event: event(PROTOCOL.eventTypes.streamDelta, { text: "IGNORADO" }, "r1")
     })
 
     expect(assistantText(state, "r1")).toBe("")
 
     state = reduceSession(state, {
       kind: "event",
-      event: event(EVENT_TYPES.streamDelta, { text: "", final: true }, "r1")
+      event: event(PROTOCOL.eventTypes.streamDelta, { text: "", final: true }, "r1")
     })
 
     expect(assistantText(state, "r1")).toBe("[cancelado]")
@@ -84,7 +85,7 @@ describe("redutor da sessão", () => {
     state = reduceSession(state, {
       kind: "event",
       event: event(
-        EVENT_TYPES.toolRequest,
+        PROTOCOL.eventTypes.toolRequest,
         {
           toolRequestId: "t1",
           name: "edit_file",
@@ -117,7 +118,7 @@ describe("redutor da sessão", () => {
 
     const state = reduceSession(initialSessionState, {
       kind: "event",
-      event: event(EVENT_TYPES.sessionSnapshot, { session: snapshot })
+      event: event(PROTOCOL.eventTypes.sessionSnapshot, { session: snapshot })
     })
 
     expect(state.messages).toHaveLength(1)
@@ -135,7 +136,7 @@ describe("redutor da sessão", () => {
 
     state = reduceSession(state, {
       kind: "event",
-      event: event(EVENT_TYPES.errorEvent, { code: "llm_failure", message: "falhou" }, "r1")
+      event: event(PROTOCOL.eventTypes.errorEvent, { code: "llm_failure", message: "falhou" }, "r1")
     })
 
     expect(state.messages.at(-1)?.text).toBe("[llm_failure] falhou")

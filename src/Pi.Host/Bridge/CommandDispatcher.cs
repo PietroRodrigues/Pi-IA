@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Pi.Contracts.Constants;
 using Pi.Contracts.Protocol;
 using Pi.Core.Engine;
 
@@ -48,7 +49,7 @@ public sealed class CommandDispatcher(
                 }
                 catch (IOException ex)
                 {
-                    logger.LogWarning(ex, "Falha ao ler stdin da ponte");
+                    logger.LogWarning(ex, PiConstants.Messages.LogBridgeReadFailure);
                     break;
                 }
 
@@ -62,12 +63,13 @@ public sealed class CommandDispatcher(
         }
         finally
         {
-            await orchestrator.InterruptAsync("shutdown", CancellationToken.None);
+            await orchestrator.InterruptAsync(PiConstants.Protocol.ShutdownReason, CancellationToken.None);
 
             var pending = _running.Values.ToArray();
             if (pending.Length > 0)
             {
-                await Task.WhenAll(pending).WaitAsync(TimeSpan.FromSeconds(5));
+                await Task.WhenAll(pending).WaitAsync(
+                    TimeSpan.FromSeconds(PiConstants.Timeouts.DispatcherShutdownSeconds));
             }
 
             lifetime.StopApplication();
@@ -84,12 +86,15 @@ public sealed class CommandDispatcher(
         }
         catch (JsonException ex)
         {
-            await PublishErrorAsync(string.Empty, ErrorCodes.InvalidMessage, $"JSON inválido: {ex.Message}");
+            await PublishErrorAsync(
+                string.Empty,
+                ErrorCodes.InvalidMessage,
+                string.Format(PiConstants.Messages.InvalidJsonTemplate, ex.Message));
             return;
         }
 
         var correlationId = string.IsNullOrWhiteSpace(envelope.CorrelationId)
-            ? Guid.NewGuid().ToString("N")
+            ? Guid.NewGuid().ToString(PiConstants.Formats.GuidN)
             : envelope.CorrelationId;
 
         try
@@ -136,17 +141,20 @@ public sealed class CommandDispatcher(
                     await PublishErrorAsync(
                         correlationId,
                         ErrorCodes.UnknownCommand,
-                        $"Comando desconhecido: {envelope.Type}");
+                        string.Format(PiConstants.Messages.UnknownCommandTemplate, envelope.Type));
                     return;
             }
         }
         catch (JsonException ex)
         {
-            await PublishErrorAsync(correlationId, ErrorCodes.InvalidMessage, $"Payload inválido: {ex.Message}");
+            await PublishErrorAsync(
+                correlationId,
+                ErrorCodes.InvalidMessage,
+                string.Format(PiConstants.Messages.InvalidPayloadTemplate, ex.Message));
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Falha ao despachar {Type}", envelope.Type);
+            logger.LogError(ex, PiConstants.Messages.LogDispatchFailure, envelope.Type);
             await PublishErrorAsync(correlationId, ErrorCodes.Internal, ex.Message);
         }
     }

@@ -1,6 +1,7 @@
 // Loop principal do agente: um turno por vez, cancelamento por correlationId,
 // streaming de delta, tool calling e persistência do snapshot da sessão.
 using System.Text;
+using Pi.Contracts.Constants;
 using Pi.Contracts.Models;
 using Pi.Contracts.Protocol;
 using Pi.Core.Abstractions;
@@ -17,8 +18,6 @@ public sealed class AgentOrchestrator(
     SessionSnapshot initialSession,
     IEnumerable<IAgentTool>? toolsCatalog = null)
 {
-    private const int MaxToolIterations = 4;
-
     private readonly SemaphoreSlim _turnGate = new(1, 1);
     private readonly IReadOnlyList<IAgentTool> _tools = (toolsCatalog ?? []).ToList();
     private CancellationTokenSource? _activeTurn;
@@ -53,7 +52,7 @@ public sealed class AgentOrchestrator(
     {
         if (string.IsNullOrWhiteSpace(text))
         {
-            await PublishErrorAsync(correlationId, ErrorCodes.EmptyPrompt, "Prompt vazio.");
+            await PublishErrorAsync(correlationId, ErrorCodes.EmptyPrompt, PiConstants.Messages.EmptyPrompt);
             await PublishFinalAsync(correlationId);
             return;
         }
@@ -70,7 +69,7 @@ public sealed class AgentOrchestrator(
             _session = _session with
             {
                 Context = budget.Measure(_session.Messages, string.Empty),
-                UpdatedAt = DateTimeOffset.UtcNow.ToString("O")
+                UpdatedAt = DateTimeOffset.UtcNow.ToString(PiConstants.Formats.TimestampRoundtrip)
             };
             await PublishFinalAsync(correlationId);
             await PublishSnapshotAsync(CancellationToken.None);
@@ -109,7 +108,7 @@ public sealed class AgentOrchestrator(
         string correlationId,
         CancellationToken cancellationToken = default)
     {
-        await InterruptAsync("session_switch", cancellationToken);
+        await InterruptAsync(CommandTypes.SessionSwitch, cancellationToken);
         await _turnGate.WaitAsync(cancellationToken);
 
         try
@@ -137,7 +136,7 @@ public sealed class AgentOrchestrator(
 
     public async Task ClearAsync(string correlationId, CancellationToken cancellationToken = default)
     {
-        await InterruptAsync("clear", cancellationToken);
+        await InterruptAsync(PiConstants.Protocol.ClearReason, cancellationToken);
         await _turnGate.WaitAsync(cancellationToken);
 
         try
@@ -146,7 +145,7 @@ public sealed class AgentOrchestrator(
             _session = _session with
             {
                 Context = new ContextUsage(0, settings.ContextWindowTokens, 0),
-                UpdatedAt = DateTimeOffset.UtcNow.ToString("O")
+                UpdatedAt = DateTimeOffset.UtcNow.ToString(PiConstants.Formats.TimestampRoundtrip)
             };
             await PublishSnapshotAsync(cancellationToken);
             await sessions.SaveAsync(Snapshot, CancellationToken.None);
@@ -166,17 +165,17 @@ public sealed class AgentOrchestrator(
         var estimate = budget.Measure(history, text);
         var userText = text.Trim();
 
-        var messages = new List<LlmMessage> { new("system", settings.SystemPrompt) };
+        var messages = new List<LlmMessage> { new(PiConstants.Roles.System, settings.SystemPrompt) };
         foreach (var message in history)
         {
             messages.Add(new LlmMessage(message.Role, message.Text));
         }
 
-        messages.Add(new LlmMessage("user", userText));
+        messages.Add(new LlmMessage(PiConstants.Roles.User, userText));
 
         var working = new List<SessionMessage>(history)
         {
-            SessionMessage.Create("user", userText)
+            SessionMessage.Create(PiConstants.Roles.User, userText)
         };
 
         var definitions = _tools.Select(ToDefinition).ToList();
@@ -191,7 +190,7 @@ public sealed class AgentOrchestrator(
             correlationId,
             cancellationToken);
 
-        while (iteration < MaxToolIterations)
+        while (iteration < PiConstants.Limits.MaxToolIterations)
         {
             iteration++;
             cancellationToken.ThrowIfCancellationRequested();
@@ -223,7 +222,8 @@ public sealed class AgentOrchestrator(
 
                 foreach (var call in chunk.ToolCalls)
                 {
-                    var key = $"{call.Id ?? string.Empty}|{call.Name}|{call.ArgumentsJson}";
+                    var key = $"{call.Id ?? string.Empty}{PiConstants.Protocol.PipeSeparator}" +
+                              $"{call.Name}{PiConstants.Protocol.PipeSeparator}{call.ArgumentsJson}";
                     if (seen.Add(key))
                     {
                         calls.Add(call);
@@ -251,7 +251,7 @@ public sealed class AgentOrchestrator(
                 break;
             }
 
-            messages.Add(new LlmMessage("assistant", string.Empty, ToolCalls: calls));
+            messages.Add(new LlmMessage(PiConstants.Roles.Assistant, string.Empty, ToolCalls: calls));
 
             foreach (var call in calls)
             {
@@ -264,12 +264,14 @@ public sealed class AgentOrchestrator(
                     cancellationToken);
 
                 var resultText = result.DisplayText;
-                working.Add(SessionMessage.Create("tool", $"{call.Name}: {resultText}"));
-                messages.Add(new LlmMessage("tool", resultText, call.Id));
+                working.Add(SessionMessage.Create(
+                    PiConstants.Roles.Tool,
+                    string.Format(PiConstants.Prompt.ToolResultTemplate, call.Name, resultText)));
+                messages.Add(new LlmMessage(PiConstants.Roles.Tool, resultText, call.Id));
                 executedTools++;
             }
 
-            if (iteration == MaxToolIterations)
+            if (iteration == PiConstants.Limits.MaxToolIterations)
             {
                 reachedLimit = true;
             }
@@ -280,12 +282,14 @@ public sealed class AgentOrchestrator(
             await PublishErrorAsync(
                 correlationId,
                 ErrorCodes.Internal,
-                $"Limite de {MaxToolIterations} iterações de ferramentas atingido.");
+                string.Format(
+                    PiConstants.Messages.ToolIterationLimitTemplate,
+                    PiConstants.Limits.MaxToolIterations));
         }
 
         if (response.Length == 0)
         {
-            const string fallback = "Sem resposta do modelo.";
+            var fallback = PiConstants.Messages.NoModelResponse;
             response.Append(fallback);
             await sink.PublishAsync(
                 EventTypes.StreamDelta,
@@ -294,7 +298,7 @@ public sealed class AgentOrchestrator(
                 cancellationToken);
         }
 
-        working.Add(SessionMessage.Create("assistant", response.ToString()));
+        working.Add(SessionMessage.Create(PiConstants.Roles.Assistant, response.ToString()));
         _session.Messages.Clear();
         _session.Messages.AddRange(working);
     }
@@ -304,7 +308,7 @@ public sealed class AgentOrchestrator(
             tool.Name,
             string.IsNullOrWhiteSpace(tool.Description) ? tool.Name : tool.Description,
             string.IsNullOrWhiteSpace(tool.ParametersSchema)
-                ? "{\"type\":\"object\",\"properties\":{}}"
+                ? PiConstants.Json.EmptyToolSchema
                 : tool.ParametersSchema);
 
     private async Task PublishSnapshotAsync(CancellationToken cancellationToken) =>
@@ -329,5 +333,5 @@ public sealed class AgentOrchestrator(
             CancellationToken.None);
 
     private static double Percent(int used, int limit) =>
-        limit <= 0 ? 0 : Math.Min(100, used * 100.0 / limit);
+        limit <= 0 ? 0 : Math.Min(PiConstants.Limits.MaxPercent, used * PiConstants.Limits.MaxPercent / limit);
 }

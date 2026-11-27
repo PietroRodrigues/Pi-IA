@@ -1,5 +1,6 @@
 // Busca rápida em arquivos de texto, respeitando .gitignore e limites de tempo/resultado.
 using Microsoft.Extensions.Logging;
+using Pi.Contracts.Constants;
 using Pi.Core.Abstractions;
 using Pi.Core.Policies;
 using Pi.Infrastructure.Options;
@@ -11,40 +12,41 @@ public sealed class SearchCodeTool(
     ToolSettings settings,
     ILogger<SearchCodeTool> logger) : IAgentTool
 {
-    private static readonly HashSet<string> IgnoredDirectories = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".git", "node_modules", "artifacts", "bin", "obj", "dist", ".vs", "coverage"
-    };
+    private static readonly HashSet<string> IgnoredDirectories =
+        new(PiConstants.Tools.IgnoredDirectories, StringComparer.OrdinalIgnoreCase);
 
-    public string Name => "search_code";
+    public string Name => PiConstants.Tools.SearchCodeName;
 
     public ToolRisk Risk => ToolRisk.ReadOnly;
 
     public bool CanHandle(string input) =>
-        input.StartsWith("procure ", StringComparison.OrdinalIgnoreCase) ||
-        input.StartsWith("busque ", StringComparison.OrdinalIgnoreCase);
+        PiConstants.Tools.SearchPrefixes.Any(prefix =>
+            input.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
 
     public async Task<string> ExecuteAsync(string input, CancellationToken cancellationToken = default)
     {
         var term = ToolInput.Argument(input);
-        if (term.Length < 2)
+        if (term.Length < PiConstants.Limits.MinSearchTermLength)
         {
-            return "Informe um termo com pelo menos 2 caracteres após 'procure'.";
+            return string.Format(
+                PiConstants.Messages.SearchTermTooShortTemplate,
+                PiConstants.Limits.MinSearchTermLength);
         }
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, settings.SearchTimeoutSeconds)));
+        timeout.CancelAfter(TimeSpan.FromSeconds(
+            Math.Max(PiConstants.Timeouts.MinimumSeconds, settings.SearchTimeoutSeconds)));
 
         try
         {
             var matches = await Task.Run(() => Search(term, timeout.Token), timeout.Token);
             return matches.Count == 0
-                ? "Nenhum arquivo encontrado."
+                ? PiConstants.Messages.NoFilesFound
                 : string.Join(Environment.NewLine, matches);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return "A busca excedeu o tempo limite.";
+            return PiConstants.Messages.SearchTimedOut;
         }
     }
 
@@ -87,12 +89,17 @@ public sealed class SearchCodeTool(
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.TopDirectoryOnly))
+        foreach (var file in Directory.EnumerateFiles(
+                     folder,
+                     PiConstants.Paths.AllEntriesPattern,
+                     SearchOption.TopDirectoryOnly))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var relative = Path.GetRelativePath(root, file).Replace('\\', '/');
-            if (IsIgnored(relative, ignorePatterns) || new FileInfo(file).Length > 1_000_000)
+            var relative = Path.GetRelativePath(root, file)
+                .Replace(PiConstants.Paths.WindowsSeparator, PiConstants.Paths.UnixSeparator);
+            if (IsIgnored(relative, ignorePatterns) ||
+                new FileInfo(file).Length > PiConstants.Limits.MaxSearchFileBytes)
             {
                 continue;
             }
@@ -103,14 +110,14 @@ public sealed class SearchCodeTool(
                 {
                     if (line.Contains(term, StringComparison.OrdinalIgnoreCase))
                     {
-                        found.Add($"{relative}: {line.Trim()}");
+                        found.Add(string.Format(PiConstants.Messages.SearchResultTemplate, relative, line.Trim()));
                         break;
                     }
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                logger.LogDebug(ex, "Não foi possível ler {File}", file);
+                logger.LogDebug(ex, PiConstants.Messages.LogSearchReadFailure, file);
             }
 
             if (found.Count >= settings.MaxResults)
@@ -119,10 +126,14 @@ public sealed class SearchCodeTool(
             }
         }
 
-        foreach (var directory in Directory.EnumerateDirectories(folder, "*", SearchOption.TopDirectoryOnly))
+        foreach (var directory in Directory.EnumerateDirectories(
+                     folder,
+                     PiConstants.Paths.AllEntriesPattern,
+                     SearchOption.TopDirectoryOnly))
         {
             var name = Path.GetFileName(directory);
-            var relative = Path.GetRelativePath(root, directory).Replace('\\', '/');
+            var relative = Path.GetRelativePath(root, directory)
+                .Replace(PiConstants.Paths.WindowsSeparator, PiConstants.Paths.UnixSeparator);
 
             if (IgnoredDirectories.Contains(name) || IsIgnored(relative, ignorePatterns))
             {
@@ -135,7 +146,7 @@ public sealed class SearchCodeTool(
 
     private IReadOnlyList<string> ReadIgnorePatterns()
     {
-        var gitignore = Path.Combine(sandbox.Root, ".gitignore");
+        var gitignore = Path.Combine(sandbox.Root, PiConstants.Paths.GitIgnoreFileName);
         if (!File.Exists(gitignore))
         {
             return [];
@@ -143,8 +154,8 @@ public sealed class SearchCodeTool(
 
         return File.ReadLines(gitignore)
             .Select(line => line.Trim())
-            .Where(line => line.Length > 0 && !line.StartsWith('#'))
-            .Select(line => line.TrimStart('/'))
+            .Where(line => line.Length > 0 && !line.StartsWith(PiConstants.Env.CommentPrefix))
+            .Select(line => line.TrimStart(PiConstants.Paths.UnixSeparator))
             .ToList();
     }
 

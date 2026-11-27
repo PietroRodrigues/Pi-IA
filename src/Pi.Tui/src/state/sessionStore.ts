@@ -1,5 +1,6 @@
 // Store reativo da TUI. Só expõe sinais e encaminha ações ao redutor puro.
 import { createSignal, type Accessor } from "solid-js"
+import { COMMANDS } from "../constants"
 import type { ContextUsagePayload, EventEnvelope, ToolRequestPayload } from "../protocol/schema"
 import {
   initialSessionState,
@@ -43,7 +44,7 @@ export function createSessionStore(): SessionStore {
     busy: () => state().activeCorrelationId !== undefined,
     pendingToolRequest: () => state().pendingToolRequest,
     dispatch,
-    applyEvent: event => dispatch({ kind: "event", event }),
+    applyEvent: event => dispatch({ kind: COMMANDS.actionKinds.event, event }),
     isActive: correlationId => state().activeCorrelationId === correlationId,
     isAwaitingDone: correlationId => state().awaitingDone.includes(correlationId)
   }

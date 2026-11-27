@@ -1,5 +1,6 @@
 // Contrato de inferência com streaming e cancelamento. O domínio não conhece HTTP.
 using System.Runtime.CompilerServices;
+using Pi.Contracts.Constants;
 
 namespace Pi.Core.Abstractions;
 
@@ -27,7 +28,8 @@ public interface ILlmProvider
     {
         var prompt = string.Join(
             Environment.NewLine,
-            messages.Select(message => $"[{message.Role}] {message.Content}"));
+            messages.Select(message =>
+                string.Format(PiConstants.Prompt.MessageTemplate, message.Role, message.Content)));
 
         await foreach (var chunk in StreamAsync(prompt, cancellationToken).WithCancellation(cancellationToken))
         {

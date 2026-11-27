@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Pi.Contracts.Constants;
 using Pi.Core.Abstractions;
 using Pi.Infrastructure.Options;
 
@@ -51,7 +52,7 @@ public sealed class OllamaProvider(
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new TimeoutException("O Ollama não respondeu dentro do tempo limite.");
+            throw new TimeoutException(PiConstants.Messages.OllamaTimeout);
         }
         catch (HttpRequestException ex)
         {
@@ -72,7 +73,7 @@ public sealed class OllamaProvider(
 
             while (await reader.ReadLineAsync(cancellationToken) is { } line)
             {
-                if (string.IsNullOrWhiteSpace(line) || !line.StartsWith('{'))
+                if (string.IsNullOrWhiteSpace(line) || !line.StartsWith(PiConstants.Json.ObjectStart))
                 {
                     continue;
                 }
@@ -80,18 +81,18 @@ public sealed class OllamaProvider(
                 using var document = JsonDocument.Parse(line);
                 var root = document.RootElement;
 
-                var text = root.TryGetProperty("response", out var textProperty)
+                var text = root.TryGetProperty(PiConstants.Json.Response, out var textProperty)
                     ? textProperty.GetString() ?? string.Empty
                     : string.Empty;
 
-                var done = root.TryGetProperty("done", out var doneProperty) &&
+                var done = root.TryGetProperty(PiConstants.Json.Done, out var doneProperty) &&
                            doneProperty.ValueKind == JsonValueKind.True;
 
                 yield return new LlmChunk(
                     text,
                     done,
-                    ReadInt(root, "prompt_eval_count"),
-                    ReadInt(root, "eval_count"));
+                    ReadInt(root, PiConstants.Json.PromptEvalCount),
+                    ReadInt(root, PiConstants.Json.EvalCount));
             }
         }
     }
@@ -117,7 +118,7 @@ public sealed class OllamaProvider(
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new TimeoutException("O Ollama não respondeu dentro do tempo limite.");
+            throw new TimeoutException(PiConstants.Messages.OllamaTimeout);
         }
         catch (HttpRequestException ex)
         {
@@ -138,26 +139,26 @@ public sealed class OllamaProvider(
 
             while (await reader.ReadLineAsync(cancellationToken) is { } line)
             {
-                if (string.IsNullOrWhiteSpace(line) || !line.StartsWith('{'))
+                if (string.IsNullOrWhiteSpace(line) || !line.StartsWith(PiConstants.Json.ObjectStart))
                 {
                     continue;
                 }
 
                 using var document = JsonDocument.Parse(line);
                 var root = document.RootElement;
-                var message = root.TryGetProperty("message", out var messageElement)
+                var message = root.TryGetProperty(PiConstants.Json.Message, out var messageElement)
                     ? messageElement
                     : default;
 
-                var done = root.TryGetProperty("done", out var doneProperty) &&
+                var done = root.TryGetProperty(PiConstants.Json.Done, out var doneProperty) &&
                            doneProperty.ValueKind == JsonValueKind.True;
 
                 yield return new LlmResponseChunk(
                     ReadText(message),
                     done,
                     ReadToolCalls(message, seenToolCalls),
-                    ReadInt(root, "prompt_eval_count"),
-                    ReadInt(root, "eval_count"));
+                    ReadInt(root, PiConstants.Json.PromptEvalCount),
+                    ReadInt(root, PiConstants.Json.EvalCount));
             }
         }
     }
@@ -165,7 +166,8 @@ public sealed class OllamaProvider(
     private CancellationTokenSource CreateTimeout(CancellationToken cancellationToken)
     {
         var source = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        source.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, settings.TimeoutSeconds)));
+        source.CancelAfter(TimeSpan.FromSeconds(
+            Math.Max(PiConstants.Timeouts.MinimumSeconds, settings.TimeoutSeconds)));
         return source;
     }
 
@@ -179,7 +181,7 @@ public sealed class OllamaProvider(
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new TimeoutException("O Ollama não respondeu dentro do tempo limite.");
+            throw new TimeoutException(PiConstants.Messages.OllamaTimeout);
         }
         catch (HttpRequestException ex)
         {
@@ -188,7 +190,7 @@ public sealed class OllamaProvider(
     }
 
     private HttpRequestMessage BuildRequest(string prompt, bool stream) =>
-        new(HttpMethod.Post, "/api/generate")
+        new(HttpMethod.Post, PiConstants.Endpoints.Generate)
         {
             Content = JsonContent.Create(new
             {
@@ -202,7 +204,7 @@ public sealed class OllamaProvider(
     private HttpRequestMessage BuildChatRequest(
         IReadOnlyList<LlmMessage> messages,
         IReadOnlyList<LlmToolDefinition> tools) =>
-        new(HttpMethod.Post, "/api/chat")
+        new(HttpMethod.Post, PiConstants.Endpoints.Chat)
         {
             Content = JsonContent.Create(new
             {
@@ -218,29 +220,29 @@ public sealed class OllamaProvider(
     {
         var body = new Dictionary<string, object?>
         {
-            ["role"] = message.Role,
-            ["content"] = message.Content
+            [PiConstants.Json.Role] = message.Role,
+            [PiConstants.Json.Content] = message.Content
         };
 
         if (message.ToolCallId is { Length: > 0 })
         {
-            body["tool_call_id"] = message.ToolCallId;
+            body[PiConstants.Json.ToolCallId] = message.ToolCallId;
         }
 
         if (message.ToolCalls is { Count: > 0 })
         {
-            body["tool_calls"] = message.ToolCalls.Select(call =>
+            body[PiConstants.Json.ToolCalls] = message.ToolCalls.Select(call =>
             {
                 var function = new Dictionary<string, object?>
                 {
-                    ["name"] = call.Name,
-                    ["arguments"] = ParseElement(call.ArgumentsJson)
+                    [PiConstants.Json.Name] = call.Name,
+                    [PiConstants.Json.Arguments] = ParseElement(call.ArgumentsJson)
                 };
 
-                var item = new Dictionary<string, object?> { ["function"] = function };
+                var item = new Dictionary<string, object?> { [PiConstants.Json.Function] = function };
                 if (call.Id is { Length: > 0 })
                 {
-                    item["id"] = call.Id;
+                    item[PiConstants.Json.Id] = call.Id;
                 }
 
                 return item;
@@ -252,7 +254,7 @@ public sealed class OllamaProvider(
 
     private static object BuildToolDefinition(LlmToolDefinition tool) => new
     {
-        type = "function",
+        type = PiConstants.Json.Function,
         function = new
         {
             name = tool.Name,
@@ -276,13 +278,13 @@ public sealed class OllamaProvider(
             }
         }
 
-        using var empty = JsonDocument.Parse("{}");
+        using var empty = JsonDocument.Parse(PiConstants.Json.EmptyObject);
         return empty.RootElement.Clone();
     }
 
     private static string ReadText(JsonElement message) =>
         message.ValueKind == JsonValueKind.Object &&
-        message.TryGetProperty("content", out var content) &&
+        message.TryGetProperty(PiConstants.Json.Content, out var content) &&
         content.ValueKind == JsonValueKind.String
             ? content.GetString() ?? string.Empty
             : string.Empty;
@@ -292,7 +294,7 @@ public sealed class OllamaProvider(
         HashSet<string> seen)
     {
         if (message.ValueKind != JsonValueKind.Object ||
-            !message.TryGetProperty("tool_calls", out var array) ||
+            !message.TryGetProperty(PiConstants.Json.ToolCalls, out var array) ||
             array.ValueKind != JsonValueKind.Array)
         {
             return [];
@@ -303,12 +305,12 @@ public sealed class OllamaProvider(
         foreach (var item in array.EnumerateArray())
         {
             if (item.ValueKind != JsonValueKind.Object ||
-                !item.TryGetProperty("function", out var function))
+                !item.TryGetProperty(PiConstants.Json.Function, out var function))
             {
                 continue;
             }
 
-            var name = function.TryGetProperty("name", out var nameElement)
+            var name = function.TryGetProperty(PiConstants.Json.Name, out var nameElement)
                 ? nameElement.GetString() ?? string.Empty
                 : string.Empty;
             if (name.Length == 0)
@@ -316,14 +318,15 @@ public sealed class OllamaProvider(
                 continue;
             }
 
-            var arguments = function.TryGetProperty("arguments", out var argumentsElement)
+            var arguments = function.TryGetProperty(PiConstants.Json.Arguments, out var argumentsElement)
                 ? argumentsElement.ValueKind == JsonValueKind.String
-                    ? argumentsElement.GetString() ?? "{}"
+                    ? argumentsElement.GetString() ?? PiConstants.Json.EmptyObject
                     : argumentsElement.GetRawText()
-                : "{}";
+                : PiConstants.Json.EmptyObject;
 
-            var id = item.TryGetProperty("id", out var idElement) ? idElement.GetString() : null;
-            var key = $"{id ?? string.Empty}|{name}|{arguments}";
+            var id = item.TryGetProperty(PiConstants.Json.Id, out var idElement) ? idElement.GetString() : null;
+            var key = $"{id ?? string.Empty}{PiConstants.Protocol.PipeSeparator}" +
+                      $"{name}{PiConstants.Protocol.PipeSeparator}{arguments}";
 
             if (seen.Add(key))
             {
@@ -341,22 +344,30 @@ public sealed class OllamaProvider(
             return;
         }
 
-        logger.LogError("Ollama retornou {Status}: {Body}", (int)response.StatusCode, body);
+        logger.LogError(PiConstants.Messages.LogOllamaStatus, (int)response.StatusCode, body);
 
         var hint = response.StatusCode == HttpStatusCode.NotFound &&
-                   body.Contains("not found", StringComparison.OrdinalIgnoreCase)
-            ? " Modelo ausente: configure PI_MODEL com um modelo já instalado."
+                   body.Contains(PiConstants.Json.NotFoundMarker, StringComparison.OrdinalIgnoreCase)
+            ? string.Format(PiConstants.Messages.OllamaMissingModelHintTemplate, PiConstants.Env.PiModel)
             : string.Empty;
 
-        throw new InvalidOperationException($"Ollama retornou {(int)response.StatusCode}: {body}.{hint}");
+        throw new InvalidOperationException(string.Format(
+            PiConstants.Messages.OllamaStatusErrorTemplate,
+            (int)response.StatusCode,
+            body,
+            hint));
     }
 
     private InvalidOperationException ExplainConnectionFailure(HttpRequestException ex)
     {
-        logger.LogError(ex, "Não foi possível conectar ao Ollama em {BaseUrl}", settings.BaseUrl);
+        logger.LogError(ex, PiConstants.Messages.LogOllamaConnectionFailure, settings.BaseUrl);
         return new InvalidOperationException(
-            $"Não foi possível conectar ao Ollama em {settings.BaseUrl}. " +
-            "Instale em https://ollama.com/download ou configure OLLAMA_BASE_URL.", ex);
+            string.Format(
+                PiConstants.Messages.OllamaConnectionErrorTemplate,
+                settings.BaseUrl,
+                PiConstants.Endpoints.OllamaDownload,
+                PiConstants.Env.OllamaBaseUrl),
+            ex);
     }
 
     private static int? ReadInt(JsonElement root, string name) =>

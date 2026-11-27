@@ -1,6 +1,7 @@
 // Faz o binding das seções, aplica variáveis de ambiente e resolve workspace/log.
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Pi.Contracts.Constants;
 using Pi.Contracts.Models;
 using Pi.Core.Engine;
 using Pi.Core.Policies;
@@ -13,15 +14,19 @@ public static class HostConfigurationLoader
 {
     public static HostConfiguration Load(IConfiguration configuration)
     {
-        var ollama = configuration.GetSection("Ollama").Get<OllamaSettings>() ?? new OllamaSettings();
-        var agent = configuration.GetSection("Agent").Get<AgentRuntimeSettings>() ?? new AgentRuntimeSettings();
-        var tools = configuration.GetSection("Tools").Get<ToolSettings>() ?? new ToolSettings();
-        var sessions = configuration.GetSection("Sessions").Get<SessionSettings>() ?? new SessionSettings();
+        var ollama = configuration.GetSection(PiConstants.Configuration.OllamaSection).Get<OllamaSettings>()
+                     ?? new OllamaSettings();
+        var agent = configuration.GetSection(PiConstants.Configuration.AgentSection).Get<AgentRuntimeSettings>()
+                    ?? new AgentRuntimeSettings();
+        var tools = configuration.GetSection(PiConstants.Configuration.ToolsSection).Get<ToolSettings>()
+                    ?? new ToolSettings();
+        var sessions = configuration.GetSection(PiConstants.Configuration.SessionsSection).Get<SessionSettings>()
+                       ?? new SessionSettings();
 
         ApplyEnvironment(ollama, agent, tools, sessions);
 
         var workspace = Path.GetFullPath(
-            Environment.GetEnvironmentVariable("PI_WORKSPACE") ?? Directory.GetCurrentDirectory());
+            Environment.GetEnvironmentVariable(PiConstants.Env.PiWorkspace) ?? Directory.GetCurrentDirectory());
         var sandbox = new WorkspaceSandboxPolicy(workspace, tools.AllowedFolders, tools.AllowShell);
 
         var initialSession = SessionSnapshot.Create(
@@ -44,7 +49,7 @@ public static class HostConfigurationLoader
                 agent.ContextWindowTokens,
                 agent.MaxHistoryMessages),
             initialSession,
-            ParseLevel(Environment.GetEnvironmentVariable("PI_LOG_LEVEL")),
+            ParseLevel(Environment.GetEnvironmentVariable(PiConstants.Env.PiLogLevel)),
             ResolveLogPath());
     }
 
@@ -54,18 +59,39 @@ public static class HostConfigurationLoader
         ToolSettings tools,
         SessionSettings sessions)
     {
-        ollama.BaseUrl = Environment.GetEnvironmentVariable("OLLAMA_BASE_URL") ?? ollama.BaseUrl;
-        ollama.Model = Environment.GetEnvironmentVariable("PI_MODEL") ?? ollama.Model;
-        ollama.ExecutablePath = Environment.GetEnvironmentVariable("OLLAMA_EXECUTABLE") ?? ollama.ExecutablePath;
+        ollama.BaseUrl = Environment.GetEnvironmentVariable(PiConstants.Env.OllamaBaseUrl) ?? ollama.BaseUrl;
+        ollama.Model = Environment.GetEnvironmentVariable(PiConstants.Env.PiModel) ?? ollama.Model;
+        ollama.ExecutablePath =
+            Environment.GetEnvironmentVariable(PiConstants.Env.OllamaExecutable) ?? ollama.ExecutablePath;
+        ollama.AutoStart = ParseBool(
+            Environment.GetEnvironmentVariable(PiConstants.Env.OllamaAutoStart),
+            ollama.AutoStart);
+        ollama.StopOnExit = ParseBool(
+            Environment.GetEnvironmentVariable(PiConstants.Env.OllamaStopOnExit),
+            ollama.StopOnExit);
 
-        if (int.TryParse(Environment.GetEnvironmentVariable("PI_CONTEXT_WINDOW_TOKENS"), out var context))
+        if (int.TryParse(
+                Environment.GetEnvironmentVariable(PiConstants.Env.PiContextWindowTokens),
+                out var context))
         {
             agent.ContextWindowTokens = context;
         }
 
-        sessions.Directory = Environment.GetEnvironmentVariable("PI_SESSION_DIR") ?? sessions.Directory;
-        tools.AllowShell = Environment.GetEnvironmentVariable("PI_ALLOW_SHELL") is { } shell &&
-                           (shell == "1" || shell.Equals("true", StringComparison.OrdinalIgnoreCase));
+        sessions.Directory =
+            Environment.GetEnvironmentVariable(PiConstants.Env.PiSessionDir) ?? sessions.Directory;
+        tools.AllowShell = ParseBool(
+            Environment.GetEnvironmentVariable(PiConstants.Env.PiAllowShell),
+            tools.AllowShell);
+    }
+
+    private static bool ParseBool(string? value, bool fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return fallback;
+        if (value is PiConstants.Protocol.TrueValue ||
+            value.Equals(PiConstants.Protocol.TrueWord, StringComparison.OrdinalIgnoreCase)) return true;
+        if (value is PiConstants.Protocol.FalseValue ||
+            value.Equals(PiConstants.Protocol.FalseWord, StringComparison.OrdinalIgnoreCase)) return false;
+        return fallback;
     }
 
     private static LogLevel? ParseLevel(string? value) =>
@@ -73,8 +99,12 @@ public static class HostConfigurationLoader
 
     private static string ResolveLogPath()
     {
-        var configured = Environment.GetEnvironmentVariable("PI_HOST_LOG") ??
-                         Path.Combine(RepoRoot.Find(), "artifacts", "debug", "pi-host.log");
+        var configured = Environment.GetEnvironmentVariable(PiConstants.Env.PiHostLog) ??
+                         Path.Combine(
+                             RepoRoot.Find(),
+                             PiConstants.Paths.ArtifactsFolderName,
+                             PiConstants.Paths.DebugFolderName,
+                             PiConstants.Paths.HostLogFileName);
 
         var full = Path.GetFullPath(configured);
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);

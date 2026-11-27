@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import { GLYPHS } from "../../src/constants"
 import type { ChatMessage } from "../../src/state/reducers"
 import {
   footerStatus,
@@ -8,8 +9,7 @@ import {
   isThinkingTurn,
   thinkingFrame,
   thinkingLabel,
-  thinkingText,
-  THINKING_FRAMES
+  thinkingText
 } from "../../src/ui/chatIndicators"
 
 function assistant(text: string, streaming: boolean): ChatMessage {
@@ -18,7 +18,7 @@ function assistant(text: string, streaming: boolean): ChatMessage {
 
 describe("indicador de execução dentro do chat", () => {
   it("anima as reticências em sequência e reinicia o ciclo", () => {
-    expect(THINKING_FRAMES).toEqual([".", "..", "..."])
+    expect(GLYPHS.thinkingFrames).toEqual([".", "..", "..."])
     expect([0, 1, 2, 3, 4].map(thinkingFrame)).toEqual([".", "..", "...", ".", ".."])
     expect(thinkingFrame(-1)).toBe("...")
   })

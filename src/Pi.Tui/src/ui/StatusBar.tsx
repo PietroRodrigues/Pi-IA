@@ -2,22 +2,14 @@
 // primeira linha; contexto e atalhos na segunda. Agente/modelo/status vivem
 // dentro da caixa de entrada e o indicador de execução vive dentro do chat.
 import { createSignal, onMount, Show } from "solid-js"
+import { COLORS, COMMANDS, LAYOUT, LIMITS, TEXT } from "../constants"
 import type { SessionStore } from "../state/sessionStore"
 import {
   detectEnvironment,
   emptyEnvironment,
   environmentLabel,
-  SHORTCUTS_LABEL,
   type EnvironmentSnapshot
 } from "./environment"
-
-const colors = {
-  panel: "#141414",
-  text: "#E5E5E5",
-  muted: "#A3A3A3",
-  accent: "#F59E0B",
-  success: "#34D399"
-} as const
 
 export interface StatusBarProps {
   readonly store: SessionStore
@@ -34,22 +26,25 @@ export function StatusBar(props: StatusBarProps) {
   return (
     <box
       style={{
-        width: "100%",
-        height: 2,
-        flexDirection: "column",
-        backgroundColor: colors.panel,
-        paddingLeft: 1,
-        paddingRight: 1
+        width: LAYOUT.fullWidth,
+        height: LAYOUT.statusBarHeight,
+        flexDirection: COMMANDS.apiValues.column,
+        backgroundColor: COLORS.panel,
+        paddingLeft: LAYOUT.one,
+        paddingRight: LAYOUT.one
       }}
     >
-      <text content={environmentLabel(environment())} fg={colors.accent} />
-      <box style={{ width: "100%", height: 1, flexDirection: "row" }}>
-        <text content={`Contexto: ${props.store.context().percent.toFixed(0)}%`} fg={colors.text} />
+      <text content={environmentLabel(environment())} fg={COLORS.accent} />
+      <box style={{ width: LAYOUT.fullWidth, height: LAYOUT.lineHeight, flexDirection: COMMANDS.apiValues.row }}>
+        <text
+          content={`${TEXT.statusBar.contextLabel}${props.store.context().percent.toFixed(LIMITS.zero)}${TEXT.statusBar.percent}`}
+          fg={COLORS.text}
+        />
         <Show when={props.notice}>
-          <text content={`  ${props.notice}`} fg={colors.success} />
+          <text content={`${TEXT.statusBar.noticePrefix}${props.notice}`} fg={COLORS.success} />
         </Show>
-        <box style={{ flexGrow: 1 }} />
-        <text content={SHORTCUTS_LABEL} fg={colors.muted} />
+        <box style={{ flexGrow: LAYOUT.one }} />
+        <text content={TEXT.environment.shortcuts} fg={COLORS.muted} />
       </box>
     </box>
   )

@@ -3,8 +3,20 @@
 import { execFile } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import {
+  COMMANDS,
+  GLYPHS,
+  LIMITS,
+  PATHS,
+  PROTOCOL,
+  TEXT,
+  TIME
+} from "../constants"
 
-export type AdminSource = "windows-net-session" | "posix-uid" | "unknown"
+export type AdminSource =
+  | typeof COMMANDS.adminSources.windows
+  | typeof COMMANDS.adminSources.posix
+  | typeof COMMANDS.adminSources.unknown
 
 export interface EnvironmentSnapshot {
   readonly cwd: string
@@ -22,14 +34,11 @@ export interface EnvironmentDeps {
 }
 
 export const emptyEnvironment: EnvironmentSnapshot = {
-  cwd: ".",
-  branch: "—",
+  cwd: TEXT.environment.currentDirectory,
+  branch: TEXT.environment.unknownBranch,
   elevated: false,
-  source: "unknown"
+  source: COMMANDS.adminSources.unknown
 }
-
-export const SHORTCUTS_LABEL =
-  "Ctrl+C copiar/cancelar · /sair encerrar · Ctrl+L limpar · Ctrl+P foco"
 
 function safely<T>(read: () => T, fallback: T): T {
   try {
@@ -42,14 +51,22 @@ function safely<T>(read: () => T, fallback: T): T {
 export function createEnvironmentDeps(): EnvironmentDeps {
   return {
     cwd: () => process.cwd(),
-    readGitHead: path => readFileSync(path, "utf8"),
+    readGitHead: path => readFileSync(path, PROTOCOL.io.encoding),
     platform: () => process.platform,
-    uid: () => (typeof process.getuid === "function" ? process.getuid() : undefined),
+    uid: () =>
+      typeof process.getuid === COMMANDS.apiValues.functionType
+        ? process.getuid!()
+        : undefined,
     checkWindowsAdmin: done => {
       try {
-        execFile("net", ["session"], { timeout: 800, windowsHide: true }, error => {
-          done(!error)
-        })
+        execFile(
+          COMMANDS.process.net,
+          [COMMANDS.process.netSession],
+          { timeout: TIME.environmentTimeoutMs, windowsHide: PROTOCOL.io.windowsHide },
+          error => {
+            done(!error)
+          }
+        )
       } catch {
         done(false)
       }
@@ -60,24 +77,29 @@ export function createEnvironmentDeps(): EnvironmentDeps {
 export function parseGitBranch(head: string | undefined): string {
   if (!head) return emptyEnvironment.branch
 
-  const ref = head.match(/^ref:\s*refs\/heads\/(.+)$/m)?.[1]?.trim()
+  const ref = head
+    .match(new RegExp(TEXT.environment.headRefPattern, TEXT.environment.multilineFlag))?.[1]
+    ?.trim()
   if (ref) return ref
 
   const detached = head.trim()
-  if (detached.length > 0 && !detached.startsWith("#")) {
-    return `HEAD@${detached.slice(0, 8)}`
+  if (detached.length > 0 && !detached.startsWith(TEXT.environment.detachedCommentPrefix)) {
+    return `${TEXT.environment.detachedPrefix}${detached.slice(0, LIMITS.gitHashChars)}`
   }
   return emptyEnvironment.branch
 }
 
 export function elevatedLabel(elevated: boolean): string {
-  return elevated ? "ADM" : "Usuário padrão"
+  return elevated ? TEXT.environment.adminBadge : TEXT.environment.standardUser
 }
 
 export function environmentLabel(env: EnvironmentSnapshot): string {
-  const cwd = env.cwd.trim().length > 0 ? env.cwd : "—"
-  const branch = env.branch === emptyEnvironment.branch ? "" : ` · git: ${env.branch}`
-  return `${cwd}${branch} · ${elevatedLabel(env.elevated)}`
+  const cwd = env.cwd.trim().length > 0 ? env.cwd : GLYPHS.emDash
+  const branch =
+    env.branch === emptyEnvironment.branch
+      ? TEXT.common.empty
+      : `${TEXT.environment.gitPrefix}${env.branch}`
+  return `${cwd}${branch}${TEXT.common.separator}${elevatedLabel(env.elevated)}`
 }
 
 function windowsAdmin(
@@ -105,34 +127,34 @@ function windowsAdmin(
 // Nunca rejeita: chamadas de ambiente são best-effort e não podem impedir a TUI.
 export async function detectEnvironment(
   overrides: Partial<EnvironmentDeps> = {},
-  timeoutMs = 800
+  timeoutMs: number = TIME.environmentTimeoutMs
 ): Promise<EnvironmentSnapshot> {
   const deps: EnvironmentDeps = { ...createEnvironmentDeps(), ...overrides }
   const cwd = safely(() => deps.cwd(), emptyEnvironment.cwd) || emptyEnvironment.cwd
 
   const branch = safely(
-    () => parseGitBranch(deps.readGitHead(join(cwd, ".git", "HEAD"))),
+    () => parseGitBranch(deps.readGitHead(join(cwd, ...PATHS.gitHead))),
     emptyEnvironment.branch
   )
 
   let elevated = false
-  let source: AdminSource = "unknown"
+  let source: AdminSource = COMMANDS.adminSources.unknown
 
   try {
-    const platform = safely(() => deps.platform(), "")
-    if (platform === "win32") {
+    const platform = safely(() => deps.platform(), TEXT.common.empty)
+    if (platform === COMMANDS.platforms.windows) {
       elevated = await windowsAdmin(deps, timeoutMs)
-      source = "windows-net-session"
+      source = COMMANDS.adminSources.windows
     } else if (platform.length > 0) {
       const uid = safely(() => deps.uid(), undefined)
       if (uid !== undefined) {
-        elevated = uid === 0
-        source = "posix-uid"
+        elevated = uid === LIMITS.zero
+        source = COMMANDS.adminSources.posix
       }
     }
   } catch {
     elevated = false
-    source = "unknown"
+    source = COMMANDS.adminSources.unknown
   }
 
   return { cwd, branch, elevated, source }

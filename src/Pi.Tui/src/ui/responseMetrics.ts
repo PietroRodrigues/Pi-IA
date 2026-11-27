@@ -1,5 +1,6 @@
 // Resumo exibido ao final de cada resposta do assistente. O host não fornece
 // tempo/tok/s nesta demo: medimos localmente e usamos fallback seguro.
+import { LIMITS, ROLES, TEXT, TIME } from "../constants"
 import type { ChatMessage } from "../state/reducers"
 
 export interface ResponseSummaryInput {
@@ -10,36 +11,45 @@ export interface ResponseSummaryInput {
 }
 
 export function formatDuration(ms: number): string {
-  if (!Number.isFinite(ms) || ms < 0) return "—"
-  if (ms < 1000) return `${Math.round(ms)} ms`
-  return `${(ms / 1000).toFixed(1)} s`
+  if (!Number.isFinite(ms) || ms < 0) return TEXT.metrics.fallbackDuration
+  if (ms < TIME.millisecondsPerSecond) {
+    return `${Math.round(ms)}${TEXT.metrics.millisecondsUnit}`
+  }
+  return `${(ms / TIME.millisecondsPerSecond).toFixed(LIMITS.decimalPlaces)}${TEXT.metrics.secondsUnit}`
 }
 
 export function tokenDelta(used: number, start: number | undefined): number {
-  if (!Number.isFinite(used) || start === undefined || !Number.isFinite(start)) return 0
-  return Math.max(0, used - start)
+  if (!Number.isFinite(used) || start === undefined || !Number.isFinite(start)) return LIMITS.zero
+  return Math.max(LIMITS.zero, used - start)
 }
 
 export function tokensPerSecond(tokens: number, elapsedMs: number): string {
   if (
     !Number.isFinite(tokens) ||
     !Number.isFinite(elapsedMs) ||
-    tokens <= 0 ||
-    elapsedMs <= 0
+    tokens <= LIMITS.zero ||
+    elapsedMs <= LIMITS.zero
   ) {
-    return "0.0"
+    return TEXT.metrics.fallbackRate
   }
-  return (tokens / (elapsedMs / 1000)).toFixed(1)
+  return (tokens / (elapsedMs / TIME.millisecondsPerSecond)).toFixed(LIMITS.decimalPlaces)
 }
 
 export function responseSummaryLine(input: ResponseSummaryInput): string {
-  const agent = input.agent.trim() || "agente"
-  const model = input.model.trim() || "modelo"
-  return `${agent} · ${model} · ${formatDuration(input.elapsedMs)} · ${tokensPerSecond(input.tokens, input.elapsedMs)} tok/s`
+  const agent = input.agent.trim() || TEXT.metrics.fallbackAgent
+  const model = input.model.trim() || TEXT.metrics.fallbackModel
+  return [
+    agent,
+    model,
+    formatDuration(input.elapsedMs),
+    `${tokensPerSecond(input.tokens, input.elapsedMs)}${TEXT.metrics.tokensPerSecondUnit}`
+  ].join(TEXT.common.separator)
 }
 
 export function streamingResponseId(messages: readonly ChatMessage[]): string | undefined {
-  return messages.find(message => message.role === "assistant" && message.streaming)?.id
+  return messages.find(
+    message => message.role === ROLES.assistant && message.streaming
+  )?.id
 }
 
 // Só devolve a mensagem quando o streaming terminou: nunca exibimos resumo
@@ -50,6 +60,7 @@ export function finishedResponse(
 ): ChatMessage | undefined {
   if (!activeId) return undefined
   return messages.find(
-    message => message.id === activeId && message.role === "assistant" && !message.streaming
+    message =>
+      message.id === activeId && message.role === ROLES.assistant && !message.streaming
   )
 }

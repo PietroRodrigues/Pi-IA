@@ -1,17 +1,8 @@
 // Medidas compartilhadas entre o menu raiz e o painel de seleção. As linhas de
 // respiro entram na altura para o item ativo nunca ficar fora da janela visível.
+// Os valores estão em constants.ts; aqui fica apenas o cálculo.
+import { LAYOUT, LIMITS } from "../constants"
 import type { SelectionGroup } from "./providerCatalog"
-
-export const MAX_MENU_ITEMS = 7
-export const MAX_SELECTION_ITEMS = 8
-// Itens compactos; o respiro fica concentrado ao redor dos subtítulos.
-export const ITEM_SPACER_LINES = 0
-export const SECTION_SPACER_LINES = 1
-export const ITEM_LINE_HEIGHT = 1 + ITEM_SPACER_LINES
-export const PINNED_LINES = 3 + ITEM_SPACER_LINES
-export const SELECTION_HEADER_LINES = 2
-export const SIMPLE_HEADER_LINES = 3
-export const PANEL_FOOTER_LINES = 1
 
 export interface WindowBounds {
   readonly start: number
@@ -24,9 +15,12 @@ export interface GroupLayout {
 }
 
 export function windowBounds(index: number, total: number, max: number): WindowBounds {
-  if (total <= max) return { start: 0, end: total }
+  if (total <= max) return { start: LAYOUT.zero, end: total }
 
-  const start = Math.max(0, Math.min(index - 2, total - max))
+  const start = Math.max(
+    LAYOUT.zero,
+    Math.min(index - LAYOUT.windowBackOffset, total - max)
+  )
   return { start, end: start + max }
 }
 
@@ -38,7 +32,7 @@ export function visibleGroupLayout(
   groups: readonly SelectionGroup[],
   bounds: WindowBounds
 ): GroupLayout {
-  let cursor = -1
+  let cursor = LAYOUT.cursorStart
   let visibleGroups = 0
   let visibleItems = 0
 
@@ -59,17 +53,24 @@ export function visibleGroupLayout(
   return { groups: visibleGroups, items: visibleItems }
 }
 
-export function simpleMenuHeight(rowCount: number): number {
-  return SIMPLE_HEADER_LINES + PANEL_FOOTER_LINES + Math.max(rowCount, 1) * ITEM_LINE_HEIGHT
+export function simpleMenuHeight(rowCount: number, hasSubtitle: boolean): number {
+  return (
+    LAYOUT.simpleHeaderLines +
+    LAYOUT.menuGapLines +
+    (hasSubtitle ? LAYOUT.subtitleLines + LAYOUT.menuGapLines : LAYOUT.zero) +
+    LAYOUT.panelFooterLines +
+    Math.max(rowCount, LIMITS.minimumRows) * LAYOUT.itemLineHeight
+  )
 }
 
 export function selectionMenuHeight(layout: GroupLayout, pinned: boolean): number {
-  const sectionLines = layout.groups * (SECTION_SPACER_LINES * 2 + 1)
-  const itemLines = layout.items * ITEM_LINE_HEIGHT
+  const sectionLines =
+    layout.groups * (LAYOUT.sectionSpacerLines * LAYOUT.two + LAYOUT.one)
+  const itemLines = layout.items * LAYOUT.itemLineHeight
   return (
-    SELECTION_HEADER_LINES +
-    PANEL_FOOTER_LINES +
-    (pinned ? PINNED_LINES : 0) +
+    LAYOUT.selectionHeaderLines +
+    LAYOUT.panelFooterLines +
+    (pinned ? LAYOUT.pinnedLines : LAYOUT.zero) +
     sectionLines +
     itemLines
   )

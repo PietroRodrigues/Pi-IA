@@ -1,5 +1,6 @@
 // Extrai o texto da resposta do Ollama, aceitando JSON único ou NDJSON.
 using System.Text.Json;
+using Pi.Contracts.Constants;
 
 namespace Pi.Infrastructure.Llm;
 
@@ -9,20 +10,21 @@ public static class OllamaResponseParser
     {
         if (string.IsNullOrWhiteSpace(body))
         {
-            throw new InvalidOperationException("Resposta vazia do Ollama.");
+            throw new InvalidOperationException(PiConstants.Messages.EmptyOllamaResponse);
         }
 
         var sawResponse = false;
 
-        foreach (var line in body.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        foreach (var line in body.Split(PiConstants.Protocol.LineFeed,
+                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
-            if (!line.StartsWith('{'))
+            if (!line.StartsWith(PiConstants.Json.ObjectStart))
             {
                 continue;
             }
 
             using var document = JsonDocument.Parse(line);
-            if (!document.RootElement.TryGetProperty("response", out var response))
+            if (!document.RootElement.TryGetProperty(PiConstants.Json.Response, out var response))
             {
                 continue;
             }
@@ -40,6 +42,8 @@ public static class OllamaResponseParser
             return string.Empty;
         }
 
-        throw new InvalidOperationException("Resposta do Ollama não contém o campo 'response'.");
+        throw new InvalidOperationException(string.Format(
+            PiConstants.Messages.OllamaResponseMissingFieldTemplate,
+            PiConstants.Json.Response));
     }
 }

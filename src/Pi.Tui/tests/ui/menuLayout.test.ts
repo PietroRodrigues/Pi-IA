@@ -1,12 +1,7 @@
 import { describe, expect, it } from "bun:test"
+import { LAYOUT } from "../../src/constants"
 import {
   isInWindow,
-  ITEM_LINE_HEIGHT,
-  ITEM_SPACER_LINES,
-  MAX_MENU_ITEMS,
-  MAX_SELECTION_ITEMS,
-  PINNED_LINES,
-  SECTION_SPACER_LINES,
   selectionMenuHeight,
   simpleMenuHeight,
   visibleGroupLayout,
@@ -29,16 +24,16 @@ function group(title: string, count: number): SelectionGroup {
 
 describe("altura e janela visível dos menus", () => {
   it("mantém o índice ativo dentro da janela deslizante", () => {
-    const bounds = windowBounds(10, 20, MAX_SELECTION_ITEMS)
+    const bounds = windowBounds(10, 20, LAYOUT.maxSelectionItems)
 
     expect(bounds).toEqual({ start: 8, end: 16 })
     expect(isInWindow(10, bounds)).toBe(true)
     expect(isInWindow(7, bounds)).toBe(false)
 
     for (let index = 0; index < 20; index += 1) {
-      const current = windowBounds(index, 20, MAX_SELECTION_ITEMS)
+      const current = windowBounds(index, 20, LAYOUT.maxSelectionItems)
       expect(isInWindow(index, current)).toBe(true)
-      expect(current.end - current.start).toBeLessThanOrEqual(MAX_SELECTION_ITEMS)
+      expect(current.end - current.start).toBeLessThanOrEqual(LAYOUT.maxSelectionItems)
     }
   })
 
@@ -50,12 +45,32 @@ describe("altura e janela visível dos menus", () => {
   })
 
   it("usa linhas compactas nos itens e respiro moderado nos subtítulos", () => {
-    expect(ITEM_SPACER_LINES).toBe(0)
-    expect(ITEM_LINE_HEIGHT).toBe(1)
-    expect(SECTION_SPACER_LINES).toBe(1)
-    expect(PINNED_LINES).toBe(3)
+    expect(LAYOUT.itemSpacerLines).toBe(0)
+    expect(LAYOUT.itemLineHeight).toBe(1)
+    expect(LAYOUT.sectionSpacerLines).toBe(1)
+    expect(LAYOUT.pinnedLines).toBe(3)
 
-    expect(simpleMenuHeight(7) - simpleMenuHeight(1)).toBe(6 * ITEM_LINE_HEIGHT)
+    expect(simpleMenuHeight(7, false) - simpleMenuHeight(1, false)).toBe(
+      6 * LAYOUT.itemLineHeight
+    )
+  })
+
+  it("reserva três linhas de margem no menu simples", () => {
+    expect(LAYOUT.menuGapLines).toBe(1)
+    expect(LAYOUT.simpleHeaderLines).toBe(4)
+    expect(LAYOUT.subtitleIndent).toBe(2)
+    expect(LAYOUT.subtitleLines).toBe(1)
+
+    // Duas margens já estão em simpleHeaderLines; a terceira vem antes do rodapé.
+    expect(simpleMenuHeight(1, false)).toBe(
+      LAYOUT.simpleHeaderLines +
+        LAYOUT.menuGapLines +
+        LAYOUT.panelFooterLines +
+        LAYOUT.itemLineHeight
+    )
+    expect(simpleMenuHeight(1, true) - simpleMenuHeight(1, false)).toBe(
+      LAYOUT.subtitleLines + LAYOUT.menuGapLines
+    )
   })
 
   it("inclui as linhas de respiro no cálculo da altura", () => {
@@ -63,10 +78,10 @@ describe("altura e janela visível dos menus", () => {
     const withPinned = selectionMenuHeight(base, true)
     const withoutPinned = selectionMenuHeight(base, false)
 
-    expect(withPinned - withoutPinned).toBe(PINNED_LINES)
+    expect(withPinned - withoutPinned).toBe(LAYOUT.pinnedLines)
     expect(selectionMenuHeight({ groups: 3, items: 16 }, false) - withoutPinned).toBe(
-      8 * ITEM_LINE_HEIGHT
+      8 * LAYOUT.itemLineHeight
     )
-    expect(windowBounds(0, 5, MAX_MENU_ITEMS)).toEqual({ start: 0, end: 5 })
+    expect(windowBounds(0, 5, LAYOUT.maxMenuItems)).toEqual({ start: 0, end: 5 })
   })
 })

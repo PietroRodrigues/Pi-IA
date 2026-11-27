@@ -3,6 +3,16 @@
 import { SyntaxStyle, type ScrollBoxRenderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { For, Show, createEffect, createSignal, onCleanup } from "solid-js"
+import {
+  COLORS,
+  COMMANDS,
+  GLYPHS,
+  LAYOUT,
+  LIMITS,
+  ROLES,
+  TEXT,
+  TIME
+} from "../constants"
 import type { ChatMessage } from "../state/reducers"
 import type { SessionStore } from "../state/sessionStore"
 import { isThinkingTurn, thinkingText } from "./chatIndicators"
@@ -13,24 +23,10 @@ import {
   tokenDelta
 } from "./responseMetrics"
 import {
-  CHAT_LAYOUT,
   hasChatSideBar,
   summarySpacerLines,
-  THIN_BAR_GLYPH,
-  USER_BAR_COLOR,
   userBarGlyphs
 } from "./theme"
-
-const colors = {
-  background: "#0A0A0A",
-  panelAlt: "#1E1E1E",
-  panel: "#141414",
-  text: "#E5E5E5",
-  muted: "#A3A3A3",
-  accent: "#F59E0B",
-  error: "#F87171",
-  success: "#34D399"
-} as const
 
 interface ChatViewProps {
   store: SessionStore
@@ -39,18 +35,22 @@ interface ChatViewProps {
 
 function hasRichContent(text: string): boolean {
   return (
-    text.includes("```") ||
-    /(^|\n)\s*\|.*\|\s*(\n|$)/.test(text) ||
-    /(^|\n)\s{0,3}#{1,6}\s/.test(text)
+    text.includes(TEXT.chat.markdown.fence) ||
+    new RegExp(TEXT.chat.markdown.tablePattern).test(text) ||
+    new RegExp(TEXT.chat.markdown.headingPattern).test(text)
   )
 }
 
 function labelOf(message: ChatMessage): string {
-  if (message.role === "thought") return `pensamento · ${message.text}`
-  if (message.role === "tool") {
-    const name = message.name ?? "ferramenta"
-    if (message.ok === undefined) return `⚙ ${name} · ${message.text}`
-    return `${message.ok ? "✓" : "✗"} ${name} · ${message.text}`
+  if (message.role === ROLES.thought) {
+    return `${TEXT.chat.thoughtPrefix}${message.text}`
+  }
+  if (message.role === ROLES.tool) {
+    const name = message.name ?? TEXT.chat.toolFallbackName
+    if (message.ok === undefined) {
+      return `${GLYPHS.gear}${GLYPHS.space}${name}${TEXT.common.separator}${message.text}`
+    }
+    return `${message.ok ? GLYPHS.check : GLYPHS.cross}${GLYPHS.space}${name}${TEXT.common.separator}${message.text}`
   }
   return message.text
 }
@@ -64,83 +64,83 @@ function MessageBubble(props: {
 }) {
   const barColor = () => {
     switch (props.message.role) {
-      case "user":
-        return colors.accent
-      case "system":
-        return colors.error
-      case "info":
-        return colors.accent
-      case "tool":
-        return props.message.ok === false ? colors.error : colors.accent
+      case ROLES.user:
+        return COLORS.accent
+      case ROLES.system:
+        return COLORS.error
+      case ROLES.info:
+        return COLORS.accent
+      case ROLES.tool:
+        return props.message.ok === false ? COLORS.error : COLORS.accent
       default:
-        return colors.muted
+        return COLORS.muted
     }
   }
 
   const textColor = () => {
     switch (props.message.role) {
-      case "system":
-        return colors.error
-      case "info":
-        return colors.muted
-      case "tool":
-        return props.message.ok === false ? colors.error : colors.success
-      case "thought":
-        return colors.muted
-      case "user":
-        return colors.text
+      case ROLES.system:
+        return COLORS.error
+      case ROLES.info:
+        return COLORS.muted
+      case ROLES.tool:
+        return props.message.ok === false ? COLORS.error : COLORS.success
+      case ROLES.thought:
+        return COLORS.muted
+      case ROLES.user:
+        return COLORS.text
       default:
-        return "#D4D4D4"
+        return COLORS.assistantText
     }
   }
 
   const rich = () =>
-    props.message.role === "assistant" &&
+    props.message.role === ROLES.assistant &&
     !props.message.streaming &&
     hasRichContent(props.message.text)
 
-  const isUser = () => props.message.role === "user"
+  const isUser = () => props.message.role === ROLES.user
   const showBar = () => hasChatSideBar(props.message.role)
   const barGlyphs = () =>
     userBarGlyphs(
       props.message.text,
-      summarySpacerLines(Boolean(props.summary)) + (props.summary ? 1 : 0),
+      summarySpacerLines(Boolean(props.summary)) + (props.summary ? LAYOUT.one : LAYOUT.zero),
       props.barWidth
     )
 
   return (
     <box
       style={{
-        width: "100%",
-        flexDirection: "row",
-        backgroundColor: isUser() ? colors.panelAlt : colors.background,
-        paddingLeft: 1,
-        paddingRight: 2,
-        paddingTop: 1,
-        paddingBottom: 1,
-        marginTop: isUser() ? CHAT_LAYOUT.userMarginTop : 0,
-        marginBottom: isUser() ? CHAT_LAYOUT.userMarginBottom : CHAT_LAYOUT.marginBottom
+        width: LAYOUT.fullWidth,
+        flexDirection: COMMANDS.apiValues.row,
+        backgroundColor: isUser() ? COLORS.panelAlt : COLORS.background,
+        paddingLeft: LAYOUT.one,
+        paddingRight: LAYOUT.chat.bubblePaddingRight,
+        paddingTop: LAYOUT.one,
+        paddingBottom: LAYOUT.one,
+        marginTop: isUser() ? LAYOUT.chat.userMarginTop : LAYOUT.zero,
+        marginBottom: isUser() ? LAYOUT.chat.userMarginBottom : LAYOUT.chat.marginBottom
       }}
     >
       <Show when={showBar()}>
         <>
-          <box style={{ width: 1, flexDirection: "column" }}>
+          <box style={{ width: LAYOUT.columnWidth, flexDirection: COMMANDS.apiValues.column }}>
             <For each={barGlyphs()}>
-              {glyph => <text content={glyph} fg={USER_BAR_COLOR} />}
+              {glyph => <text content={glyph} fg={COLORS.accent} />}
             </For>
           </box>
-          <box style={{ width: 1 }} />
+          <box style={{ width: LAYOUT.gutterWidth }} />
         </>
       </Show>
-      <Show when={!showBar() && props.message.role !== "assistant"}>
-        <box style={{ width: 1, height: 1 }}>
-          <text content={THIN_BAR_GLYPH} fg={barColor()} />
+      <Show when={!showBar() && props.message.role !== ROLES.assistant}>
+        <box style={{ width: LAYOUT.columnWidth, height: LAYOUT.lineHeight }}>
+          <text content={GLYPHS.thinBar} fg={barColor()} />
         </box>
-        <box style={{ width: 1 }} />
+        <box style={{ width: LAYOUT.gutterWidth }} />
       </Show>
-      <box style={{ flexGrow: 1, minWidth: 0, paddingRight: 1 }}>
+      <box style={{ flexGrow: LAYOUT.one, minWidth: LAYOUT.zero, paddingRight: LAYOUT.one }}>
         <Show when={props.thinking}>
-          <text content={props.thinking!} fg={colors.muted} />
+          <text content={props.thinking!} fg={COLORS.muted} />
         </Show>
         <Show when={!props.thinking && rich()}>
           <markdown
@@ -148,19 +148,24 @@ function MessageBubble(props: {
             streaming={props.message.streaming}
             syntaxStyle={props.syntaxStyle}
             fg={textColor()}
-            bg={colors.background}
-            style={{ width: "100%", flexGrow: 1 }}
+            bg={COLORS.background}
+            style={{ width: LAYOUT.fullWidth, flexGrow: LAYOUT.one }}
           />
         </Show>
         <Show
           when={
             !props.thinking &&
             !rich() &&
-            (props.message.text.length > 0 || props.message.role !== "assistant")
+            (props.message.text.length > 0 || props.message.role !== ROLES.assistant)
           }
         >
           <text
-            content={labelOf(props.message) + (props.message.streaming ? " ▌" : "")}
+            content={
+              labelOf(props.message) +
+              (props.message.streaming
+                ? `${GLYPHS.space}${GLYPHS.streamCursor}`
+                : TEXT.common.empty)
+            }
             fg={textColor()}
           />
         </Show>
@@ -168,7 +173,7 @@ function MessageBubble(props: {
         <Show when={props.summary}>
           <>
             <box style={{ height: summarySpacerLines(true) }} />
-            <text content={props.summary!} fg={colors.muted} />
+            <text content={props.summary!} fg={COLORS.muted} />
           </>
         </Show>
       </box>
@@ -183,7 +188,7 @@ export function ChatView(props: ChatViewProps) {
 
   let scrollRef: ScrollBoxRenderable | undefined
   let thinkingTimer: ReturnType<typeof setInterval> | undefined
-  const [tick, setTick] = createSignal(0)
+  const [tick, setTick] = createSignal<number>(LIMITS.zero)
 
   const stopThinking = () => {
     if (thinkingTimer === undefined) return
@@ -198,8 +203,11 @@ export function ChatView(props: ChatViewProps) {
     }
 
     if (thinkingTimer !== undefined) return
-    setTick(0)
-    thinkingTimer = setInterval(() => setTick(current => current + 1), 350)
+    setTick(LIMITS.zero)
+    thinkingTimer = setInterval(
+      () => setTick(current => current + LAYOUT.one),
+      TIME.thinkingIntervalMs
+    )
   })
   onCleanup(stopThinking)
 
@@ -226,7 +234,8 @@ export function ChatView(props: ChatViewProps) {
     const finished = finishedResponse(responseId, messages)
     if (!finished) return
 
-    const elapsedMs = startedAt === undefined ? 0 : Math.max(0, Date.now() - startedAt)
+    const elapsedMs =
+      startedAt === undefined ? LIMITS.zero : Math.max(LIMITS.zero, Date.now() - startedAt)
     const tokens = tokenDelta(props.store.context().used, startTokens)
     const session = props.store.session()
     const line = responseSummaryLine({
@@ -245,13 +254,15 @@ export function ChatView(props: ChatViewProps) {
   const updateJump = () => {
     const scroll = scrollRef
     if (!scroll) {
-      props.store.dispatch({ kind: "jump", jump: false })
+      props.store.dispatch({ kind: COMMANDS.actionKinds.jump, jump: false })
       return
     }
 
     const viewportHeight = scroll.viewport.height
-    const atBottom = scroll.scrollTop + 2 >= Math.max(0, scroll.scrollHeight - viewportHeight)
-    props.store.dispatch({ kind: "jump", jump: !atBottom })
+    const atBottom =
+      scroll.scrollTop + LIMITS.scrollBottomTolerance >=
+      Math.max(LIMITS.zero, scroll.scrollHeight - viewportHeight)
+    props.store.dispatch({ kind: COMMANDS.actionKinds.jump, jump: !atBottom })
   }
 
   createEffect(() => {
@@ -266,18 +277,25 @@ export function ChatView(props: ChatViewProps) {
   })
 
   return (
-    <box style={{ width: "100%", flexGrow: 1, flexDirection: "column", minHeight: 0 }}>
+    <box
+      style={{
+        width: LAYOUT.fullWidth,
+        flexGrow: LAYOUT.one,
+        flexDirection: COMMANDS.apiValues.column,
+        minHeight: LAYOUT.zero
+      }}
+    >
       <Show when={props.store.jump()}>
         <box
           style={{
-            width: "100%",
-            backgroundColor: colors.panelAlt,
-            paddingLeft: 1,
-            paddingRight: 1
+            width: LAYOUT.fullWidth,
+            backgroundColor: COLORS.panelAlt,
+            paddingLeft: LAYOUT.one,
+            paddingRight: LAYOUT.one
           }}
           onMouseDown={props.onJump}
         >
-          <text fg={colors.accent}>Jump to latest ↓</text>
+          <text fg={COLORS.accent}>{TEXT.chat.jumpLatest}</text>
         </box>
       </Show>
 
@@ -285,30 +303,30 @@ export function ChatView(props: ChatViewProps) {
         ref={scrollRef}
         focused
         style={{
-          width: "100%",
-          flexGrow: 1,
+          width: LAYOUT.fullWidth,
+          flexGrow: LAYOUT.one,
           scrollY: true,
-          rootOptions: { backgroundColor: colors.background },
-          wrapperOptions: { backgroundColor: colors.background },
-          viewportOptions: { backgroundColor: colors.background },
+          rootOptions: { backgroundColor: COLORS.background },
+          wrapperOptions: { backgroundColor: COLORS.background },
+          viewportOptions: { backgroundColor: COLORS.background },
           contentOptions: {
-            backgroundColor: colors.background,
-            paddingLeft: CHAT_LAYOUT.marginX,
-            paddingRight: CHAT_LAYOUT.marginRight
+            backgroundColor: COLORS.background,
+            paddingLeft: LAYOUT.chat.marginX,
+            paddingRight: LAYOUT.chat.marginRight
           },
           scrollbarOptions: {
             trackOptions: {
-              foregroundColor: colors.accent,
-              backgroundColor: colors.panel
+              foregroundColor: COLORS.accent,
+              backgroundColor: COLORS.panel
             }
           }
         }}
         onMouseScroll={() => queueMicrotask(updateJump)}
       >
-        <Show when={props.store.messages().length === 0}>
-          <box style={{ padding: 2, backgroundColor: colors.background }}>
-            <text fg={colors.accent}>Pi</text>
-            <text fg={colors.muted}>Assistente local · Ollama · digite abaixo para começar</text>
+        <Show when={props.store.messages().length === LIMITS.zero}>
+          <box style={{ padding: LAYOUT.chat.bubblePadding, backgroundColor: COLORS.background }}>
+            <text fg={COLORS.accent}>{TEXT.chat.emptyTitle}</text>
+            <text fg={COLORS.muted}>{TEXT.chat.emptyHint}</text>
           </box>
         </Show>
 

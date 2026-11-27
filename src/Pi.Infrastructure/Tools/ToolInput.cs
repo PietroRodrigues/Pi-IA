@@ -1,5 +1,6 @@
 // Parser pequeno e previsível para comandos de texto das ferramentas.
 using System.Text.RegularExpressions;
+using Pi.Contracts.Constants;
 
 namespace Pi.Infrastructure.Tools;
 
@@ -7,7 +8,10 @@ public static partial class ToolInput
 {
     public static string Argument(string input)
     {
-        var parts = input.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var parts = input.Split(
+            PiConstants.Protocol.Space,
+            2,
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return parts.Length > 1 ? parts[1] : string.Empty;
     }
 
@@ -18,6 +22,6 @@ public static partial class ToolInput
                 : match.Groups[1].Value)
             .ToList();
 
-    [GeneratedRegex("\"([^\"]+)\"|(\\S+)")]
+    [GeneratedRegex(PiConstants.Patterns.ToolTokens)]
     private static partial Regex TokenRegex();
 }

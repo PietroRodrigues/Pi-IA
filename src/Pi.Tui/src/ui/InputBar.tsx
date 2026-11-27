@@ -2,21 +2,10 @@
 // Envia no Enter e fica inerte enquanto o turno está ativo.
 import type { InputRenderable } from "@opentui/core"
 import { createEffect, For, Show } from "solid-js"
+import { COLORS, COMMANDS, GLYPHS, LAYOUT, TEXT } from "../constants"
 import type { SessionStore } from "../state/sessionStore"
 import { inputContextSegments } from "./chatIndicators"
-import {
-  colors as theme,
-  INPUT_BAR_GLYPH,
-  INPUT_LAYOUT,
-  inputBlockHeight
-} from "./theme"
-
-const colors = {
-  panel: "#141414",
-  panelAlt: "#1E1E1E",
-  text: "#E5E5E5",
-  muted: "#A3A3A3"
-} as const
+import { inputBlockHeight } from "./theme"
 
 interface InputBarProps {
   store: SessionStore
@@ -29,7 +18,7 @@ export function InputBar(props: InputBarProps) {
   let inputRef: InputRenderable | undefined
 
   const placeholder = (busy: boolean) =>
-    busy ? "Gerando… Esc para cancelar" : "Digite sua mensagem..."
+    busy ? TEXT.input.placeholderBusy : TEXT.input.placeholderIdle
 
   createEffect(() => {
     const value = placeholder(props.store.busy())
@@ -55,37 +44,37 @@ export function InputBar(props: InputBarProps) {
       style={{
         // "auto" deixa o flex do pai descontar as margens: com 100% o bloco
         // estourava à direita e a margem direita ficava invisível.
-        width: "auto",
+        width: LAYOUT.autoWidth,
         height: inputBlockHeight(),
-        flexDirection: "row",
-        backgroundColor: props.store.busy() ? colors.panelAlt : colors.panel,
-        marginTop: INPUT_LAYOUT.marginTop,
-        marginLeft: INPUT_LAYOUT.marginX,
-        marginRight: INPUT_LAYOUT.marginRight,
-        marginBottom: INPUT_LAYOUT.marginBottom,
-        paddingLeft: 0,
-        paddingRight: 1,
-        paddingTop: 0,
-        paddingBottom: 0
+        flexDirection: COMMANDS.apiValues.row,
+        backgroundColor: props.store.busy() ? COLORS.panelAlt : COLORS.panel,
+        marginTop: LAYOUT.input.marginTop,
+        marginLeft: LAYOUT.input.marginX,
+        marginRight: LAYOUT.input.marginRight,
+        marginBottom: LAYOUT.input.marginBottom,
+        paddingLeft: LAYOUT.zero,
+        paddingRight: LAYOUT.input.paddingRight,
+        paddingTop: LAYOUT.zero,
+        paddingBottom: LAYOUT.zero
       }}
     >
-      <box style={{ width: 1, flexDirection: "column", flexGrow: 1 }}>
+      <box style={{ width: LAYOUT.columnWidth, flexDirection: COMMANDS.apiValues.column, flexGrow: LAYOUT.one }}>
         <For each={barLines()}>
-          {() => <text content={INPUT_BAR_GLYPH} fg={theme.accent} />}
+          {() => <text content={GLYPHS.inputBar} fg={COLORS.accent} />}
         </For>
       </box>
-      <box style={{ width: 1 }} />
+      <box style={{ width: LAYOUT.gutterWidth }} />
       <box
         style={{
-          flexGrow: 1,
-          minWidth: 0,
-          flexDirection: "column",
-          paddingTop: INPUT_LAYOUT.paddingTop,
-          paddingBottom: INPUT_LAYOUT.paddingBottom,
-          paddingRight: 1
+          flexGrow: LAYOUT.one,
+          minWidth: LAYOUT.zero,
+          flexDirection: COMMANDS.apiValues.column,
+          paddingTop: LAYOUT.input.paddingTop,
+          paddingBottom: LAYOUT.input.paddingBottom,
+          paddingRight: LAYOUT.input.paddingRight
         }}
       >
-        <box style={{ width: "100%", height: 1, flexDirection: "row" }}>
+        <box style={{ width: LAYOUT.fullWidth, height: LAYOUT.lineHeight, flexDirection: COMMANDS.apiValues.row }}>
           <input
             ref={renderable => {
               inputRef = renderable
@@ -93,13 +82,13 @@ export function InputBar(props: InputBarProps) {
               props.onRef?.(renderable)
             }}
             focused
-            placeholder="Digite sua mensagem..."
-            placeholderColor={colors.muted}
+            placeholder={TEXT.input.placeholderIdle}
+            placeholderColor={COLORS.muted}
             style={{
-              width: "100%",
-              flexGrow: 1,
-              backgroundColor: colors.panel,
-              textColor: colors.text
+              width: LAYOUT.fullWidth,
+              flexGrow: LAYOUT.one,
+              backgroundColor: COLORS.panel,
+              textColor: COLORS.text
             }}
             onInput={value => props.onValueChange?.(value)}
             onSubmit={value => {
@@ -112,14 +101,14 @@ export function InputBar(props: InputBarProps) {
           />
         </box>
 
-        <box style={{ height: INPUT_LAYOUT.gapLines }} />
+        <box style={{ height: LAYOUT.input.gapLines }} />
 
-        <box style={{ width: "100%", height: 1, flexDirection: "row" }}>
-          <text content={segments().agent} fg={theme.accent} />
-          <text content=" · " fg={colors.muted} />
-          <text content={segments().model} fg={colors.muted} />
+        <box style={{ width: LAYOUT.fullWidth, height: LAYOUT.lineHeight, flexDirection: COMMANDS.apiValues.row }}>
+          <text content={segments().agent} fg={COLORS.accent} />
+          <text content={TEXT.common.separator} fg={COLORS.muted} />
+          <text content={segments().model} fg={COLORS.muted} />
           <Show when={segments().status.length > 0}>
-            <text content={` · ${segments().status}`} fg={colors.muted} />
+            <text content={`${TEXT.common.separator}${segments().status}`} fg={COLORS.muted} />
           </Show>
         </box>
       </box>

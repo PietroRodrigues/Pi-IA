@@ -9,13 +9,12 @@ import {
 } from "../../src/ui/commandCatalog"
 
 describe("árvore de comandos em português simples", () => {
-  it("define os sete comandos raiz e seus subcomandos", () => {
+  it("define os seis comandos raiz e seus subcomandos", () => {
     expect(ROOT_COMMANDS.map(node => node.command)).toEqual([
       "/providers",
       "/models",
       "/local-models",
       "/agents",
-      "/tools",
       "/session",
       "/system"
     ])
@@ -30,7 +29,6 @@ describe("árvore de comandos em português simples", () => {
         "/local-models/scan"
       ],
       "/agents": ["/agents/list", "/agents/behavior"],
-      "/tools": ["/tools/list", "/tools/safety"],
       "/session": ["/session/list", "/session/new", "/session/clear", "/session/summarize"],
       "/system": ["/system/appearance", "/system/settings", "/system/health"]
     }
@@ -38,6 +36,23 @@ describe("árvore de comandos em português simples", () => {
     for (const node of ROOT_COMMANDS) {
       expect(childrenOf(node).map(child => child.command)).toEqual([...expected[node.command]])
     }
+  })
+
+  it("mantém Ferramentas um nível abaixo de Configurações", () => {
+    expect(resolveNode(["system", "settings"])?.kind).toBe("group")
+    expect(childrenOf(resolveNode(["system", "settings"])!).map(node => node.command)).toEqual([
+      "/system/settings/current",
+      "/system/settings/tools"
+    ])
+
+    const tools = resolveNode(["system", "settings", "tools"])
+    expect(tools?.kind).toBe("group")
+    expect(childrenOf(tools!).map(node => node.command)).toEqual([
+      "/system/settings/tools/list",
+      "/system/settings/tools/safety"
+    ])
+    expect(resolveNode(["system", "settings", "tools", "list"])?.source).toBe("tools")
+    expect(resolveNode(["tools"])).toBeUndefined()
   })
 
   it("oferece /models/<provider> como filhos dinâmicos de /models/providers", () => {
@@ -57,7 +72,9 @@ describe("árvore de comandos em português simples", () => {
 
   it("filtra por comando ou descrição", () => {
     expect(filterCommands("provid").map(node => node.command)).toEqual(["/providers"])
-    expect(filterCommands("segurança").map(node => node.command)).toEqual(["/tools"])
+    // A busca cobre apenas a raiz; Ferramentas agora vive um nível abaixo.
+    expect(filterCommands("segurança")).toEqual([])
+    expect(filterCommands("sistema").map(node => node.command)).toEqual(["/system"])
     expect(filterCommands("")).toHaveLength(ROOT_COMMANDS.length)
     expect(filterCommands("nada")).toEqual([])
   })

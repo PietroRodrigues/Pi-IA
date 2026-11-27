@@ -1,40 +1,41 @@
 // Configurações tipadas dos adaptadores. O Host faz o binding e injeta estas instâncias.
+using Pi.Contracts.Constants;
+
 namespace Pi.Infrastructure.Options;
 
 public sealed class OllamaSettings
 {
-    public string BaseUrl { get; set; } = "http://127.0.0.1:11434";
-    public string Model { get; set; } = "qwen3.8-2b-local";
-    public int TimeoutSeconds { get; set; } = 60;
-    public bool AutoStart { get; set; } = true;
-    public int StartupTimeoutSeconds { get; set; } = 30;
+    public string BaseUrl { get; set; } = PiConstants.Defaults.BaseUrl;
+    public string Model { get; set; } = PiConstants.Defaults.Model;
+    public int TimeoutSeconds { get; set; } = PiConstants.Defaults.TimeoutSeconds;
+    public bool AutoStart { get; set; } = PiConstants.Defaults.AutoStart;
+    public int StartupTimeoutSeconds { get; set; } = PiConstants.Defaults.StartupTimeoutSeconds;
     public string? ExecutablePath { get; set; }
-    public bool StopOnExit { get; set; }
+    public bool StopOnExit { get; set; } = PiConstants.Defaults.StopOnExit;
 }
 
 public sealed class AgentRuntimeSettings
 {
-    public string SystemPrompt { get; set; } =
-        "Você é Pi, um assistente local. Fale português do Brasil, seja claro e não invente informações.";
+    public string SystemPrompt { get; set; } = PiConstants.Defaults.SystemPrompt;
 
-    public int ContextWindowTokens { get; set; } = 32768;
-    public int MaxHistoryMessages { get; set; } = 20;
-    public string AgentName { get; set; } = "geral";
-    public string SessionId { get; set; } = "default";
+    public int ContextWindowTokens { get; set; } = PiConstants.Defaults.ContextWindowTokens;
+    public int MaxHistoryMessages { get; set; } = PiConstants.Defaults.MaxHistoryMessages;
+    public string AgentName { get; set; } = PiConstants.Defaults.AgentName;
+    public string SessionId { get; set; } = PiConstants.Defaults.SessionId;
 }
 
 public sealed class ToolSettings
 {
     public string[] AllowedFolders { get; set; } = [];
-    public int MaxResults { get; set; } = 20;
-    public int SearchTimeoutSeconds { get; set; } = 10;
-    public int MaxReadBytes { get; set; } = 65536;
-    public int MaxOutputCharacters { get; set; } = 8000;
-    public int ShellTimeoutSeconds { get; set; } = 15;
-    public bool AllowShell { get; set; }
+    public int MaxResults { get; set; } = PiConstants.Defaults.MaxResults;
+    public int SearchTimeoutSeconds { get; set; } = PiConstants.Defaults.SearchTimeoutSeconds;
+    public int MaxReadBytes { get; set; } = PiConstants.Defaults.MaxReadBytes;
+    public int MaxOutputCharacters { get; set; } = PiConstants.Defaults.MaxOutputCharacters;
+    public int ShellTimeoutSeconds { get; set; } = PiConstants.Defaults.ShellTimeoutSeconds;
+    public bool AllowShell { get; set; } = PiConstants.Defaults.AllowShell;
 }
 
 public sealed class SessionSettings
 {
-    public string Directory { get; set; } = ".pi-ia/sessions";
+    public string Directory { get; set; } = PiConstants.Defaults.SessionDirectory;
 }

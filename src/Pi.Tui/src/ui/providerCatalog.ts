@@ -1,24 +1,34 @@
 // Catálogo estático de demonstração visual. Nada aqui é enviado ao host.
+// Ids, rótulos e limites vêm de constants.ts; aqui só a composição dos catálogos.
+import {
+  COMMANDS,
+  GLYPHS,
+  LIMITS,
+  MODELS,
+  PROVIDERS as PROVIDER_DATA,
+  TEXT
+} from "../constants"
+
 export type CatalogSource =
-  | "providers"
-  | "models"
-  | "localModels"
-  | "programs"
-  | "agents"
-  | "behaviors"
-  | "tools"
-  | "sessions"
-  | "appearances"
+  | typeof COMMANDS.catalogKinds.providers
+  | typeof COMMANDS.catalogKinds.models
+  | typeof COMMANDS.catalogKinds.localModels
+  | typeof COMMANDS.catalogKinds.programs
+  | typeof COMMANDS.catalogKinds.agents
+  | typeof COMMANDS.catalogKinds.behaviors
+  | typeof COMMANDS.catalogKinds.tools
+  | typeof COMMANDS.catalogKinds.sessions
+  | typeof COMMANDS.catalogKinds.appearances
 
 export type InfoSource =
-  | "providerStatus"
-  | "localScan"
-  | "toolSafety"
-  | "sessionNew"
-  | "sessionClear"
-  | "sessionSummarize"
-  | "systemSettings"
-  | "systemHealth"
+  | typeof COMMANDS.catalogKinds.providerStatus
+  | typeof COMMANDS.catalogKinds.localScan
+  | typeof COMMANDS.catalogKinds.toolSafety
+  | typeof COMMANDS.catalogKinds.sessionNew
+  | typeof COMMANDS.catalogKinds.sessionClear
+  | typeof COMMANDS.catalogKinds.sessionSummarize
+  | typeof COMMANDS.catalogKinds.systemSettings
+  | typeof COMMANDS.catalogKinds.systemHealth
 
 export interface CatalogItem {
   readonly id: string
@@ -39,85 +49,127 @@ export interface SettingInfo {
 }
 
 export const PROVIDER_CATALOG: readonly CatalogItem[] = [
-  { id: "ollama", label: "Ollama (Local)", detail: "provedor local · padrão", group: "Provedores locais" },
-  { id: "nvidia", label: "NVIDIA", detail: "provedor remoto · demonstração", group: "Provedores remotos" },
-  { id: "opencode", label: "OpenCode", detail: "provedor remoto · demonstração", group: "Provedores remotos" },
   {
-    id: "qwen-local",
-    label: "qwen3.8-2b-local",
-    detail: "modelo local · não quantizado",
-    group: "Modelos no PC",
-    providerId: "pc"
+    id: PROVIDER_DATA.ids.ollama,
+    label: PROVIDER_DATA.labels.ollamaLocal,
+    detail: PROVIDER_DATA.details.localDefault,
+    group: PROVIDER_DATA.groups.local
   },
   {
-    id: "qwen-iq2",
-    label: "qwen3-6b-iq2-local",
-    detail: "modelo local · IQ2",
-    group: "Modelos no PC",
-    providerId: "pc"
+    id: PROVIDER_DATA.ids.nvidia,
+    label: PROVIDER_DATA.labels.nvidia,
+    detail: PROVIDER_DATA.details.remoteDemo,
+    group: PROVIDER_DATA.groups.remote
   },
   {
-    id: "qwen-3b",
-    label: "qwen2.5:3b",
-    detail: "Ollama · não quantizado",
-    group: "Ollama · não quantizados",
-    providerId: "ollama"
+    id: PROVIDER_DATA.ids.opencode,
+    label: PROVIDER_DATA.labels.openCode,
+    detail: PROVIDER_DATA.details.remoteDemo,
+    group: PROVIDER_DATA.groups.remote
   },
   {
-    id: "qwen-3b-q4",
-    label: "qwen2.5:3b-q4_K_M",
-    detail: "Ollama · Q4_K_M",
-    group: "Ollama · quantizados",
-    providerId: "ollama"
+    id: MODELS.ids.qwen38Local,
+    label: MODELS.labels.qwen38Local,
+    detail: PROVIDER_DATA.details.localModel,
+    group: PROVIDER_DATA.groups.modelsPc,
+    providerId: PROVIDER_DATA.ids.pc
   },
   {
-    id: "llama-q4",
-    label: "llama3.2:3b-q4_0",
-    detail: "Ollama · Q4_0",
-    group: "Ollama · quantizados",
-    providerId: "ollama"
+    id: MODELS.ids.qwen36Iq2,
+    label: MODELS.labels.qwen36Iq2,
+    detail: PROVIDER_DATA.details.localIq2,
+    group: PROVIDER_DATA.groups.modelsPc,
+    providerId: PROVIDER_DATA.ids.pc
   },
   {
-    id: "llama-3b",
-    label: "llama3.2:3b",
-    detail: "Ollama · não quantizado",
-    group: "Ollama · não quantizados",
-    providerId: "ollama"
+    id: MODELS.ids.qwen25_3b,
+    label: MODELS.labels.qwen25_3b,
+    detail: PROVIDER_DATA.details.ollamaModel,
+    group: PROVIDER_DATA.groups.ollamaUnquantized,
+    providerId: PROVIDER_DATA.ids.ollama
   },
   {
-    id: "deepseek-q4",
-    label: "deepseek-r1:7b-q4_K_M",
-    detail: "Ollama · Q4_K_M",
-    group: "Ollama · quantizados",
-    providerId: "ollama"
+    id: MODELS.ids.qwen25_3bQ4,
+    label: MODELS.labels.qwen25_3bQ4,
+    detail: PROVIDER_DATA.details.ollamaQ4,
+    group: PROVIDER_DATA.groups.ollamaQuantized,
+    providerId: PROVIDER_DATA.ids.ollama
   },
   {
-    id: "phi4",
-    label: "phi4:14b",
-    detail: "Ollama · não quantizado",
-    group: "Ollama · não quantizados",
-    providerId: "ollama"
+    id: MODELS.ids.llama32_3bQ4,
+    label: MODELS.labels.llama32_3bQ4,
+    detail: PROVIDER_DATA.details.ollamaQ40,
+    group: PROVIDER_DATA.groups.ollamaQuantized,
+    providerId: PROVIDER_DATA.ids.ollama
+  },
+  {
+    id: MODELS.ids.llama32_3b,
+    label: MODELS.labels.llama32_3b,
+    detail: PROVIDER_DATA.details.ollamaModel,
+    group: PROVIDER_DATA.groups.ollamaUnquantized,
+    providerId: PROVIDER_DATA.ids.ollama
+  },
+  {
+    id: MODELS.ids.deepseekR1Q4,
+    label: MODELS.labels.deepseekR1Q4,
+    detail: PROVIDER_DATA.details.ollamaQ4,
+    group: PROVIDER_DATA.groups.ollamaQuantized,
+    providerId: PROVIDER_DATA.ids.ollama
+  },
+  {
+    id: MODELS.ids.phi4,
+    label: MODELS.labels.phi4,
+    detail: PROVIDER_DATA.details.ollamaModel,
+    group: PROVIDER_DATA.groups.ollamaUnquantized,
+    providerId: PROVIDER_DATA.ids.ollama
   }
 ]
 
 export const PROVIDERS: readonly CatalogItem[] = PROVIDER_CATALOG.filter(
-  item => item.group.startsWith("Provedores")
+  item => item.group.startsWith(PROVIDER_DATA.groups.providerPrefix)
 )
 
 export const LOCAL_MODELS: readonly CatalogItem[] = PROVIDER_CATALOG.filter(
-  item => item.group.includes("Modelos") || item.group.startsWith("Ollama")
+  item =>
+    item.group.includes(PROVIDER_DATA.groups.modelsMarker) ||
+    item.group.startsWith(PROVIDER_DATA.groups.ollamaMarker)
 )
 
 export const PROGRAMS: readonly CatalogItem[] = [
-  { id: "ollama", label: "Ollama", detail: "servidor local", group: "Programas no PC" },
-  { id: "lm-studio", label: "LM Studio", detail: "interface local", group: "Programas no PC" },
-  { id: "llama-cpp", label: "llama.cpp", detail: "execução direta", group: "Programas no PC" },
-  { id: "onnx", label: "ONNX Runtime", detail: "modelos ONNX", group: "Programas no PC" }
+  {
+    id: PROVIDER_DATA.ids.ollama,
+    label: PROVIDER_DATA.labels.ollama,
+    detail: PROVIDER_DATA.details.ollamaServer,
+    group: PROVIDER_DATA.groups.programs
+  },
+  {
+    id: PROVIDER_DATA.ids.lmStudio,
+    label: PROVIDER_DATA.labels.lmStudio,
+    detail: PROVIDER_DATA.details.lmStudio,
+    group: PROVIDER_DATA.groups.programs
+  },
+  {
+    id: PROVIDER_DATA.ids.llamaCpp,
+    label: PROVIDER_DATA.labels.llamaCpp,
+    detail: PROVIDER_DATA.details.llamaCpp,
+    group: PROVIDER_DATA.groups.programs
+  },
+  {
+    id: PROVIDER_DATA.ids.onnx,
+    label: PROVIDER_DATA.labels.onnx,
+    detail: PROVIDER_DATA.details.onnx,
+    group: PROVIDER_DATA.groups.programs
+  }
 ]
 
 export const MODEL_PROVIDERS: readonly CatalogItem[] = [
   ...PROVIDERS,
-  { id: "pc", label: "PC (local)", detail: "modelos baixados no PC", group: "Provedores locais" }
+  {
+    id: PROVIDER_DATA.ids.pc,
+    label: PROVIDER_DATA.labels.pc,
+    detail: PROVIDER_DATA.details.pcModels,
+    group: PROVIDER_DATA.groups.local
+  }
 ]
 
 const CATALOGS: Record<CatalogSource, readonly CatalogItem[]> = {
@@ -125,70 +177,79 @@ const CATALOGS: Record<CatalogSource, readonly CatalogItem[]> = {
   models: PROVIDER_CATALOG.filter(item => item.providerId !== undefined),
   localModels: LOCAL_MODELS,
   programs: PROGRAMS,
-  agents: [
-    { id: "leitor", label: "Leitor", detail: "só leitura", group: "Agentes" },
-    { id: "escritor", label: "Escritor", detail: "edita arquivos", group: "Agentes" },
-    { id: "revisor", label: "Revisor", detail: "revisa mudanças", group: "Agentes" }
-  ],
-  behaviors: [
-    { id: "curto", label: "Curto", detail: "respostas breves", group: "Comportamento" },
-    { id: "equilibrado", label: "Equilibrado", detail: "padrão visual", group: "Comportamento" },
-    { id: "detalhado", label: "Detalhado", detail: "mais contexto", group: "Comportamento" }
-  ],
-  tools: [
-    { id: "read_file", label: "read_file", detail: "leitura", group: "Ferramentas" },
-    { id: "edit_file", label: "edit_file", detail: "escrita", group: "Ferramentas" },
-    { id: "search_code", label: "search_code", detail: "busca", group: "Ferramentas" },
-    { id: "execute_shell", label: "execute_shell", detail: "desativada", group: "Ferramentas" }
-  ],
-  sessions: [
-    { id: "atual", label: "Atual", detail: "em uso", group: "Sessões" },
-    { id: "anterior", label: "Anterior", detail: "visual", group: "Sessões" },
-    { id: "arquivada", label: "Arquivada", detail: "visual", group: "Sessões" }
-  ],
-  appearances: [
-    { id: "ambar", label: "Âmbar", detail: "padrão", group: "Aparência" },
-    { id: "cinza", label: "Cinza", detail: "neutro", group: "Aparência" },
-    { id: "contraste", label: "Alto contraste", detail: "acessível", group: "Aparência" }
-  ]
+  agents: PROVIDER_DATA.catalog.agents.map(item => ({
+    ...item,
+    group: PROVIDER_DATA.groups.agents
+  })),
+  behaviors: PROVIDER_DATA.catalog.behaviors.map(item => ({
+    ...item,
+    group: PROVIDER_DATA.groups.behaviors
+  })),
+  tools: PROVIDER_DATA.catalog.tools.map(item => ({
+    ...item,
+    group: PROVIDER_DATA.groups.tools
+  })),
+  sessions: PROVIDER_DATA.catalog.sessions.map(item => ({
+    ...item,
+    group: PROVIDER_DATA.groups.sessions
+  })),
+  appearances: PROVIDER_DATA.catalog.appearances.map(item => ({
+    ...item,
+    group: PROVIDER_DATA.groups.appearances
+  }))
 }
 
 export const INFO_PANELS: Record<InfoSource, readonly SettingInfo[]> = {
   providerStatus: [
-    { label: "Conexão", detail: "demonstração visual" },
-    { label: "Envio ao host", detail: "nenhum por enquanto" }
+    { label: TEXT.menuInfo.connection, detail: TEXT.menuInfo.connectionDetail },
+    { label: TEXT.menuInfo.hostSend, detail: TEXT.menuInfo.hostSendDetail }
   ],
   localScan: [
-    { label: "Varredura", detail: "simulada na TUI" },
-    { label: "Arquivos lidos", detail: "nenhum" }
+    { label: TEXT.menuInfo.scan, detail: TEXT.menuInfo.scanDetail },
+    { label: TEXT.menuInfo.filesRead, detail: TEXT.menuInfo.none }
   ],
   toolSafety: [
-    { label: "Sandbox", detail: "visual · sem execução" },
-    { label: "Aprovação", detail: "Y / N / Esc" }
+    { label: TEXT.menuInfo.sandbox, detail: TEXT.menuInfo.sandboxDetail },
+    { label: TEXT.menuInfo.approval, detail: TEXT.menuInfo.approvalDetail }
   ],
-  sessionNew: [{ label: "Nova sessão", detail: "apenas demonstração visual" }],
-  sessionClear: [{ label: "Limpar", detail: "apenas demonstração visual" }],
-  sessionSummarize: [{ label: "Resumo", detail: "apenas demonstração visual" }],
+  sessionNew: [{ label: TEXT.menuInfo.newSession, detail: TEXT.menuInfo.demoOnly }],
+  sessionClear: [{ label: TEXT.menuInfo.clearSession, detail: TEXT.menuInfo.demoOnly }],
+  sessionSummarize: [{ label: TEXT.menuInfo.summarizeSession, detail: TEXT.menuInfo.demoOnly }],
   systemSettings: [
-    { label: "Histórico mantido", detail: "20 mensagens" },
-    { label: "Janela de contexto", detail: "128.000 tokens (visual)" },
-    { label: "Iterações de ferramenta", detail: "4 por turno" },
-    { label: "Ferramentas", detail: "read_file, edit_file, search_code" },
-    { label: "Transporte", detail: "NDJSON v1 · demonstração, sem envio" }
+    {
+      label: TEXT.menuInfo.history,
+      detail: `${LIMITS.historyMessages}${TEXT.menuInfo.messagesUnit}`
+    },
+    {
+      label: TEXT.menuInfo.contextWindow,
+      detail: `${LIMITS.contextTokens.toLocaleString(TEXT.menuInfo.numberLocale)}${TEXT.menuInfo.contextWindowDetail}`
+    },
+    {
+      label: TEXT.menuInfo.iterations,
+      detail: `${LIMITS.toolIterationsPerTurn}${TEXT.menuInfo.iterationsDetail}`
+    },
+    {
+      label: TEXT.menuInfo.tools,
+      detail: PROVIDER_DATA.catalog.tools
+        .slice(0, LIMITS.visibleToolRows)
+        .map(tool => tool.label)
+        .join(TEXT.common.commaSpace)
+    },
+    { label: TEXT.menuInfo.transport, detail: TEXT.menuInfo.transportDetail }
   ],
   systemHealth: [
-    { label: "TUI", detail: "ativa" },
-    { label: "Backend", detail: "não consultado nesta demo" }
+    { label: TEXT.menuInfo.tui, detail: TEXT.menuInfo.tuiDetail },
+    { label: TEXT.menuInfo.backend, detail: TEXT.menuInfo.backendDetail }
   ]
 }
 
 export const SETTINGS_INFO: readonly SettingInfo[] = INFO_PANELS.systemSettings
 
 export const LOCAL_ADD_OPTION: CatalogItem = {
-  id: "add-local-model",
-  label: "Adicionar modelo do PC",
-  detail: "cole um caminho ou busque um diretório",
-  group: "No PC"
+  id: PROVIDER_DATA.catalog.localAdd.id,
+  label: PROVIDER_DATA.catalog.localAdd.label,
+  detail: PROVIDER_DATA.catalog.localAdd.detail,
+  group: PROVIDER_DATA.groups.localAdd
 }
 
 export function catalogFor(source: CatalogSource): readonly CatalogItem[] {
@@ -205,7 +266,9 @@ export function filterCatalogItems(
   }
 
   return items.filter(item =>
-    `${item.label} ${item.detail} ${item.group}`.toLowerCase().includes(term))
+    `${item.label}${GLYPHS.space}${item.detail}${GLYPHS.space}${item.group}`
+      .toLowerCase()
+      .includes(term))
 }
 
 export function filterProviderCatalog(query: string): CatalogItem[] {

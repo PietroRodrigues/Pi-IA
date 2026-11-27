@@ -1,5 +1,6 @@
 // Execução de processo sem shell implícito: timeout, kill tree e saída limitada.
 using System.Diagnostics;
+using Pi.Contracts.Constants;
 using Pi.Core.Abstractions;
 using Pi.Core.Policies;
 using Pi.Infrastructure.Options;
@@ -10,25 +11,25 @@ public sealed class ExecuteShellTool(
     WorkspaceSandboxPolicy sandbox,
     ToolSettings settings) : IAgentTool
 {
-    public string Name => "execute_shell";
+    public string Name => PiConstants.Tools.ExecuteShellName;
 
     public ToolRisk Risk => ToolRisk.Shell;
 
     public bool CanHandle(string input) =>
-        input.StartsWith("execute ", StringComparison.OrdinalIgnoreCase) ||
-        input.StartsWith("shell ", StringComparison.OrdinalIgnoreCase);
+        PiConstants.Tools.ShellPrefixes.Any(prefix =>
+            input.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
 
     public async Task<string> ExecuteAsync(string input, CancellationToken cancellationToken = default)
     {
         if (WorkspaceSandboxPolicy.IsDangerous(input))
         {
-            throw new InvalidOperationException("Comando bloqueado pela política de segurança.");
+            throw new InvalidOperationException(PiConstants.Messages.CommandBlocked);
         }
 
         var tokens = ToolInput.Tokens(ToolInput.Argument(input));
         if (tokens.Count == 0)
         {
-            return "Informe o executável após 'execute'.";
+            return PiConstants.Messages.MissingExecutable;
         }
 
         var startInfo = new ProcessStartInfo(tokens[0])
@@ -46,10 +47,13 @@ public sealed class ExecuteShellTool(
         }
 
         using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException($"Não foi possível iniciar '{tokens[0]}'.");
+            ?? throw new InvalidOperationException(string.Format(
+                PiConstants.Messages.CannotStartExecutableTemplate,
+                tokens[0]));
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, settings.ShellTimeoutSeconds)));
+        timeout.CancelAfter(TimeSpan.FromSeconds(
+            Math.Max(PiConstants.Timeouts.MinimumSeconds, settings.ShellTimeoutSeconds)));
 
         var output = new System.Text.StringBuilder();
         process.OutputDataReceived += (_, args) => Append(output, args.Data);
@@ -68,11 +72,15 @@ public sealed class ExecuteShellTool(
                 process.Kill(entireProcessTree: true);
             }
 
-            return "O comando excedeu o tempo limite e foi encerrado.";
+            return PiConstants.Messages.CommandTimedOut;
         }
 
-        var suffix = process.ExitCode == 0 ? string.Empty : $" (exit {process.ExitCode})";
-        return output.Length == 0 ? $"Comando concluído{suffix}." : output.ToString() + suffix;
+        var suffix = process.ExitCode == 0
+            ? string.Empty
+            : string.Format(PiConstants.Messages.CommandExitSuffixTemplate, process.ExitCode);
+        return output.Length == 0
+            ? string.Format(PiConstants.Messages.CommandCompletedTemplate, suffix)
+            : output.ToString() + suffix;
     }
 
     private void Append(System.Text.StringBuilder output, string? data)

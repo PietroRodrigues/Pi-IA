@@ -2,7 +2,7 @@
 
 Assistente de IA **local** para o terminal. Você digita uma mensagem e o Pi conversa com um modelo rodando no seu computador via Ollama — sem serviços em nuvem, chave de API ou telemetria.
 
-O Pi também cuida do servidor: se o Ollama não estiver aberto, ele inicia `ollama serve` em segundo plano e espera ficar pronto antes de aceitar mensagens.
+O Pi também cuida do servidor: reutiliza qualquer Ollama local já aberto e só inicia `ollama serve` em segundo plano quando não há nenhuma instância. Ao sair, o Ollama permanece aberto para a próxima execução; `OLLAMA_STOP_ON_EXIT=1` encerra apenas a instância iniciada pelo Pi.
 
 ## Estrutura
 
@@ -69,7 +69,7 @@ dotnet build Pi.sln --configuration Debug
 dotnet run --project src/Pi.Host
 ```
 
-`dotnet run --project src/Pi.Host` compila o backend via `ProjectReference`, inicia a TUI e encerra a árvore de processos no `Ctrl+C` com código `0`. Para validar sem abrir o terminal: `PI_SKIP_TUI=1 dotnet run --project src/Pi.Host`.
+`dotnet run --project src/Pi.Host` compila o backend via `ProjectReference` e inicia a TUI. Saia com `/sair` ou `/exit`: TUI e backend são encerrados, e o Ollama fica disponível para a próxima execução. Para validar sem abrir o terminal: `PI_SKIP_TUI=1 dotnet run --project src/Pi.Host`.
 
 ## Controles
 
@@ -78,7 +78,8 @@ dotnet run --project src/Pi.Host
 | `Ctrl+P` | Foca o campo de texto |
 | `Ctrl+L` | Limpa o contexto da conversa |
 | `Esc` ou `Ctrl+C` durante a geração | Cancela o turno atual |
-| `Ctrl+C` com a TUI ociosa | Encerra TUI, backend e processos filhos |
+| `Ctrl+C` com seleção ou TUI ociosa | Copia a seleção (ou avisa como sair) — nunca encerra |
+| `/sair` ou `/exit` | Encerra TUI e backend; o Ollama permanece aberto |
 | `Y` / `N` / `Esc` | Aprova ou nega uma ferramenta sensível |
 | Mouse na área de mensagens | Rolagem; `Jump to latest ↓` reaparece no fim |
 
@@ -99,6 +100,7 @@ Variáveis de ambiente (ou `.env` na raiz) têm prioridade sobre `src/Pi.Host/ap
 | Variável | Padrão | Descrição |
 |---|---|---|
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Endereço do Ollama |
+| `OLLAMA_STOP_ON_EXIT` | `0` | Opt-in: encerra só o Ollama iniciado pelo Pi |
 | `PI_MODEL` | `qwen3.8-2b-local` | Modelo usado |
 | `PI_LOG_LEVEL` | `Information` | Nível de log do host |
 | `PI_CONTEXT_WINDOW_TOKENS` | `32768` | Janela de contexto estimada |

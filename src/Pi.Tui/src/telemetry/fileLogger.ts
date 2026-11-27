@@ -2,14 +2,9 @@
 // o que o OpenTUI desenha, e o backend usa o próprio stdout para NDJSON.
 import { appendFileSync, existsSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
+import { COMMANDS, ENV, GLYPHS, PATHS, TEXT } from "../constants"
 
-export const LOG_FILES = {
-  host: "pi-host.log",
-  tui: "pi-tui.log",
-  ndjson: "ndjson-trace.log"
-} as const
-
-export type LogName = keyof typeof LOG_FILES
+export type LogName = keyof typeof PATHS.logFiles
 
 export function findRepoRoot(): string {
   const candidates = [import.meta.dir, process.cwd()]
@@ -19,14 +14,14 @@ export function findRepoRoot(): string {
 
     while (true) {
       if (
-        existsSync(join(directory, "global.json")) &&
-        existsSync(join(directory, "Pi.sln")) &&
-        existsSync(join(directory, "src", "Pi.Tui", "package.json"))
+        existsSync(join(directory, PATHS.globalJson)) &&
+        existsSync(join(directory, PATHS.solution)) &&
+        existsSync(join(directory, ...PATHS.tuiPackage))
       ) {
         return directory
       }
 
-      const parent = join(directory, "..")
+      const parent = join(directory, PATHS.parentDirectory)
       if (parent === directory) break
       directory = parent
     }
@@ -36,12 +31,12 @@ export function findRepoRoot(): string {
 }
 
 export function debugEnabled(): boolean {
-  const value = process.env.PI_DEBUG
-  return value === "1" || value?.toLowerCase() === "true"
+  const value = process.env[ENV.debug]
+  return value === ENV.debugEnabledFlag || value?.toLowerCase() === ENV.debugTrueText
 }
 
 export function resolveLogDir(): string {
-  return process.env.PI_DEBUG_LOG_DIR ?? join(findRepoRoot(), "artifacts", "debug")
+  return process.env[ENV.debugLogDir] ?? join(findRepoRoot(), ...PATHS.debugLogDir)
 }
 
 export class FileLogger {
@@ -55,13 +50,13 @@ export class FileLogger {
     if (!enabled) return
 
     mkdirSync(logDir, { recursive: true })
-    this.log("sessão iniciada", { pid: process.pid, cwd: process.cwd() })
+    this.log(TEXT.logs.sessionStarted, { pid: process.pid, cwd: process.cwd() })
 
-    process.on("uncaughtException", error => {
-      this.log("uncaughtException", { message: error.message, stack: error.stack })
+    process.on(COMMANDS.nodeEvents.uncaughtException, error => {
+      this.log(TEXT.logs.uncaughtException, { message: error.message, stack: error.stack })
     })
-    process.on("unhandledRejection", reason => {
-      this.log("unhandledRejection", {
+    process.on(COMMANDS.nodeEvents.unhandledRejection, reason => {
+      this.log(TEXT.logs.unhandledRejection, {
         reason: String(reason),
         stack: reason instanceof Error ? reason.stack : undefined
       })
@@ -69,23 +64,30 @@ export class FileLogger {
   }
 
   path(name: LogName): string {
-    return join(this.logDir, LOG_FILES[name])
+    return join(this.logDir, PATHS.logFiles[name])
   }
 
   log(message: string, extra?: Record<string, unknown>): void {
     if (!this.enabled) return
-    const details = extra && Object.keys(extra).length > 0 ? ` ${JSON.stringify(extra)}` : ""
-    this.append("tui", `[${new Date().toISOString()}] ${message}${details}\n`)
+    const details =
+      extra && Object.keys(extra).length > 0
+        ? `${GLYPHS.space}${JSON.stringify(extra)}`
+        : TEXT.common.empty
+    this.append(
+      PATHS.logKeys.tui,
+      `${TEXT.logs.timestampOpen}${new Date().toISOString()}${TEXT.logs.timestampClose}` +
+        `${message}${details}${TEXT.common.newline}`
+    )
   }
 
   stderr(chunk: string): void {
     if (!this.enabled) return
-    this.append("tui", `[backend stderr] ${chunk}`)
+    this.append(PATHS.logKeys.tui, `${TEXT.logs.stderrPrefix}${GLYPHS.space}${chunk}`)
   }
 
   ndjson(line: string): void {
     if (!this.enabled) return
-    this.append("ndjson", `${line}\n`)
+    this.append(PATHS.logKeys.ndjson, `${line}${TEXT.common.newline}`)
   }
 
   private append(name: LogName, content: string): void {
