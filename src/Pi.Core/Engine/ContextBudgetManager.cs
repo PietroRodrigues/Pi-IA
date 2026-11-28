@@ -30,21 +30,105 @@ public sealed class ContextBudgetManager(AgentSettings settings)
             Math.Min(PiConstants.Limits.MaxPercent, used * PiConstants.Limits.MaxPercent / limit));
     }
 
-    // Remove as mensagens mais antigas até caber no limite e respeita o tamanho máximo.
+    // Remove blocos de turno inteiros até caber no limite e no teto de mensagens.
+    // Um bloco começa em "user" e inclui toda a sequência assistant/tool seguinte.
     public List<SessionMessage> Compact(IReadOnlyList<SessionMessage> history, string incoming)
     {
-        var messages = history.ToList();
+        var blocks = NormalizeBlocks(history);
         var limit = Math.Max(PiConstants.Limits.MinimumContextLimit, Settings.ContextWindowTokens);
 
-        while (messages.Count > 1 && Measure(messages, incoming).Used > limit)
+        while (blocks.Count > 1 && Measure(Flatten(blocks), incoming).Used > limit)
         {
-            messages.RemoveAt(0);
+            blocks.RemoveAt(0);
         }
 
         var maximum = Math.Max(PiConstants.Limits.MinimumHistoryMessages, Settings.MaxHistoryMessages);
-        if (messages.Count > maximum)
+        while (blocks.Count > 1 && Flatten(blocks).Count > maximum)
         {
-            messages.RemoveRange(0, messages.Count - maximum);
+            blocks.RemoveAt(0);
+        }
+
+        return Flatten(blocks);
+    }
+
+    private static List<List<SessionMessage>> NormalizeBlocks(IReadOnlyList<SessionMessage> history)
+    {
+        var blocks = new List<List<SessionMessage>>();
+        List<SessionMessage>? current = null;
+
+        foreach (var message in history)
+        {
+            if (message.Role == PiConstants.Roles.User || current is null)
+            {
+                current = [];
+                blocks.Add(current);
+            }
+
+            current.Add(message);
+        }
+
+        return blocks
+            .Select(NormalizeBlock)
+            .Where(block => block.Count > 0)
+            .ToList();
+    }
+
+    private static List<SessionMessage> NormalizeBlock(IReadOnlyList<SessionMessage> block)
+    {
+        var pending = new HashSet<string>(StringComparer.Ordinal);
+        var kept = new List<SessionMessage>(block.Count);
+
+        foreach (var message in block)
+        {
+            if (message.Role == PiConstants.Roles.Tool)
+            {
+                var id = message.ToolCallId;
+                if (string.IsNullOrEmpty(id) || !pending.Remove(id))
+                {
+                    continue;
+                }
+
+                kept.Add(message);
+                continue;
+            }
+
+            if (message.Role == PiConstants.Roles.Assistant && message.ToolCalls is not null)
+            {
+                var valid = message.ToolCalls
+                    .Where(call => !string.IsNullOrEmpty(call.Id) && pending.Add(call.Id))
+                    .ToList();
+
+                kept.Add(valid.Count == 0
+                    ? message with { ToolCalls = null }
+                    : message with { ToolCalls = valid });
+                continue;
+            }
+
+            kept.Add(message);
+        }
+
+        return kept
+            .Select(message =>
+            {
+                if (message.ToolCalls is null) return message;
+
+                var valid = message.ToolCalls
+                    .Where(call => !string.IsNullOrEmpty(call.Id) && !pending.Contains(call.Id))
+                    .ToList();
+
+                return valid.Count == 0
+                    ? message with { ToolCalls = null }
+                    : message with { ToolCalls = valid };
+            })
+            .ToList();
+    }
+
+    private static List<SessionMessage> Flatten(IReadOnlyList<List<SessionMessage>> blocks)
+    {
+        var messages = new List<SessionMessage>();
+        foreach (var block in blocks)
+        {
+            messages.AddRange(block);
         }
 
         return messages;

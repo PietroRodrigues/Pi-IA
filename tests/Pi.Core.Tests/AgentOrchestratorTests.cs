@@ -1,4 +1,5 @@
 // Orquestração de um turno: streaming, persistência, métricas e cancelamento.
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Pi.Contracts.Models;
@@ -94,8 +95,90 @@ public class AgentOrchestratorTests
         var saved = await sessions.GetAsync("s1");
         Assert.NotNull(saved);
         Assert.Contains(saved!.Messages, message => message.Role == "tool");
+
+        var assistantCall = Assert.Single(saved.Messages, message =>
+            message.Role == "assistant" && message.Text == string.Empty);
+        var call = Assert.Single(assistantCall.ToolCalls!);
+        Assert.Equal("call-1", call.Id);
+        Assert.Equal("read_file", call.Name);
+        Assert.Equal("""{"path":"a.txt"}""", call.ArgumentsJson);
+
+        var toolMessage = Assert.Single(saved.Messages, message => message.Role == "tool");
+        Assert.Equal("call-1", toolMessage.ToolCallId);
         Assert.Contains(saved.Messages, message =>
             message.Role == "assistant" && message.Text == "Resposta final");
+    }
+
+    [Fact]
+    public async Task RunTurnAsync_SegundoTurno_ReconstruiToolCallsEToolCallId()
+    {
+        var settings = new AgentSettings("sistema", 1000, 10);
+        var provider = new ToolCallingProvider();
+        var tool = new StaticTool("read_file", "conteudo do arquivo");
+        var sut = CreateSut(settings, provider, new RecordingSink(), new MemorySessions(), [tool]);
+
+        await sut.RunTurnAsync("leia a.txt", "r1");
+        await sut.RunTurnAsync("e agora?", "r2");
+
+        var second = provider.Requests[1];
+        Assert.Contains(second, message =>
+            message.Role == "assistant" &&
+            message.ToolCalls is { Count: 1 } &&
+            message.ToolCalls[0].Id == "call-1");
+        Assert.Contains(second, message =>
+            message.Role == "tool" && message.ToolCallId == "call-1");
+    }
+
+    [Fact]
+    public async Task Snapshot_LeituraConcorrenteDuranteAtualizacao_SoObservaContagensValidas()
+    {
+        const int seedCount = 20_000;
+        var settings = new AgentSettings("sistema", 1_000_000, 30_000);
+        var seed = Enumerable.Range(0, seedCount)
+            .Select(_ => SessionMessage.Create("user", "x"))
+            .ToList();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sut = CreateSut(
+            settings,
+            new GatedProvider(gate.Task),
+            new RecordingSink(),
+            new MemorySessions(),
+            seed: seed);
+
+        var initialCount = sut.Snapshot.Messages.Count;
+        var counts = new ConcurrentBag<int>();
+        Exception? readerError = null;
+        using var stop = new CancellationTokenSource();
+
+        var reader = Task.Run(() =>
+        {
+            try
+            {
+                while (!stop.IsCancellationRequested)
+                {
+                    counts.Add(sut.Snapshot.Messages.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                readerError = ex;
+            }
+        });
+
+        var turn = sut.RunTurnAsync("oi", "r1");
+        await WaitUntilAsync(() => counts.Count >= 500, TimeSpan.FromSeconds(5));
+        gate.SetResult();
+        await turn.WaitAsync(TimeSpan.FromSeconds(10));
+        stop.Cancel();
+        await reader.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var finalCount = sut.Snapshot.Messages.Count;
+        Assert.Null(readerError);
+        Assert.True(counts.Count >= 500);
+        Assert.Equal(seedCount + 2, finalCount);
+        Assert.All(counts, count => Assert.True(
+            count == initialCount || count == finalCount,
+            $"Snapshot inconsistente: {count}"));
     }
 
     private static AgentOrchestrator CreateSut(
@@ -103,9 +186,11 @@ public class AgentOrchestratorTests
         ILlmProvider provider,
         RecordingSink sink,
         ISessionRepository sessions,
-        IEnumerable<IAgentTool>? catalog = null)
+        IEnumerable<IAgentTool>? catalog = null,
+        IReadOnlyList<SessionMessage>? seed = null)
     {
-        var session = SessionSnapshot.Create("s1", "fake", "geral", "C:/temp", "main", settings.ContextWindowTokens);
+        var session = SessionSnapshot.Create("s1", "fake", "geral", "C:/temp", "main", settings.ContextWindowTokens)
+            with { Messages = seed?.ToList() ?? [] };
         var tools = catalog?.ToList() ?? [];
 
         return new AgentOrchestrator(
@@ -172,11 +257,29 @@ public class AgentOrchestratorTests
         }
     }
 
+    private sealed class GatedProvider(Task gate) : ILlmProvider
+    {
+        public string ModelName => "gated";
+
+        public Task<string> SendAsync(string prompt, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public async IAsyncEnumerable<LlmChunk> StreamAsync(
+            string prompt,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            await gate.WaitAsync(cancellationToken);
+            yield return new LlmChunk("resposta", true);
+        }
+    }
+
     private sealed class ToolCallingProvider : ILlmProvider
     {
         private bool _toolCallSent;
 
         public string ModelName => "tool-calling";
+
+        public List<IReadOnlyList<LlmMessage>> Requests { get; } = [];
 
         public Task<string> SendAsync(string prompt, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
@@ -191,6 +294,8 @@ public class AgentOrchestratorTests
             IReadOnlyList<LlmToolDefinition> tools,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            Requests.Add(messages.ToList());
+
             if (!_toolCallSent)
             {
                 _toolCallSent = true;

@@ -61,11 +61,25 @@ Contrato exclusivo entre `src/Pi.Tui` e `src/Pi.Host --bridge stdio`.
   "agent": "geral",
   "cwd": "C:/projetos/Pi-IA",
   "branch": "main",
-  "messages": [{ "role": "user", "text": "oi", "timestamp": "..." }],
+  "messages": [
+    { "role": "user", "text": "leia a.txt", "timestamp": "..." },
+    {
+      "role": "assistant",
+      "text": "",
+      "timestamp": "...",
+      "tool_calls": [
+        { "id": "call-1", "name": "read_file", "arguments": "{\"path\":\"a.txt\"}" }
+      ]
+    },
+    { "role": "tool", "text": "conteudo", "timestamp": "...", "tool_call_id": "call-1" },
+    { "role": "assistant", "text": "Resposta final", "timestamp": "..." }
+  ],
   "context": { "used": 10, "limit": 32768, "percent": 0.03 },
   "updatedAt": "2026-11-24T12:34:56.789Z"
 }
 ```
+
+> `tool_calls` e `tool_call_id` são opcionais e só aparecem quando o turno usou ferramentas. Snapshots antigos sem esses campos continuam válidos; uma mensagem `tool` sem `tool_call_id` correspondente não é reenviada ao modelo.
 
 ## Códigos de erro
 

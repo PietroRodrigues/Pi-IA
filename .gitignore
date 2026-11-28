@@ -84,6 +84,9 @@ id_rsa*
 # Preferências locais e snapshots de sessão (perfil do usuário)
 .pi-ia/
 
+# Backlog local de engenharia (documento de trabalho, não versionado)
+BACKLOG.md
+
 # ============================================================
 # Node/Bun (TUI)
 # ============================================================

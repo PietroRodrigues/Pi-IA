@@ -23,24 +23,31 @@ public sealed class AgentOrchestrator(
     private CancellationTokenSource? _activeTurn;
     private SessionSnapshot _session = initialSession;
 
-    public string SessionId => _session.Id;
+    public string SessionId => Volatile.Read(ref _session).Id;
 
-    public SessionSnapshot Snapshot => new(
-        _session.Id,
-        _session.Model,
-        _session.Agent,
-        _session.Cwd,
-        _session.Branch,
-        [.. _session.Messages],
-        _session.Context,
-        _session.UpdatedAt);
+    public SessionSnapshot Snapshot
+    {
+        get
+        {
+            var session = Volatile.Read(ref _session);
+            return new SessionSnapshot(
+                session.Id,
+                session.Model,
+                session.Agent,
+                session.Cwd,
+                session.Branch,
+                [.. session.Messages],
+                session.Context,
+                session.UpdatedAt);
+        }
+    }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         await PublishSnapshotAsync(cancellationToken);
         await sink.PublishAsync(
             EventTypes.ContextMetrics,
-            _session.Context,
+            Volatile.Read(ref _session).Context,
             string.Empty,
             cancellationToken);
     }
@@ -66,11 +73,12 @@ public sealed class AgentOrchestrator(
         {
             await RunTurnCoreAsync(text, correlationId, turn.Token);
 
-            _session = _session with
+            var current = Volatile.Read(ref _session);
+            Volatile.Write(ref _session, current with
             {
-                Context = budget.Measure(_session.Messages, string.Empty),
+                Context = budget.Measure(current.Messages, string.Empty),
                 UpdatedAt = DateTimeOffset.UtcNow.ToString(PiConstants.Formats.TimestampRoundtrip)
-            };
+            });
             await PublishFinalAsync(correlationId);
             await PublishSnapshotAsync(CancellationToken.None);
             await sessions.SaveAsync(Snapshot, CancellationToken.None);
@@ -113,14 +121,15 @@ public sealed class AgentOrchestrator(
 
         try
         {
-            _session = await sessions.GetAsync(sessionId, cancellationToken)
-                ?? SessionSnapshot.Create(
-                    sessionId,
-                    _session.Model,
-                    _session.Agent,
-                    _session.Cwd,
-                    _session.Branch,
-                    settings.ContextWindowTokens);
+            var current = Volatile.Read(ref _session);
+            var loaded = await sessions.GetAsync(sessionId, cancellationToken);
+            Volatile.Write(ref _session, loaded ?? SessionSnapshot.Create(
+                sessionId,
+                current.Model,
+                current.Agent,
+                current.Cwd,
+                current.Branch,
+                settings.ContextWindowTokens));
 
             await PublishSnapshotAsync(cancellationToken);
         }
@@ -141,12 +150,13 @@ public sealed class AgentOrchestrator(
 
         try
         {
-            _session.Messages.Clear();
-            _session = _session with
+            var current = Volatile.Read(ref _session);
+            Volatile.Write(ref _session, current with
             {
+                Messages = [],
                 Context = new ContextUsage(0, settings.ContextWindowTokens, 0),
                 UpdatedAt = DateTimeOffset.UtcNow.ToString(PiConstants.Formats.TimestampRoundtrip)
-            };
+            });
             await PublishSnapshotAsync(cancellationToken);
             await sessions.SaveAsync(Snapshot, CancellationToken.None);
         }
@@ -161,14 +171,14 @@ public sealed class AgentOrchestrator(
         string correlationId,
         CancellationToken cancellationToken)
     {
-        var history = budget.Compact(_session.Messages, text);
+        var history = budget.Compact(Volatile.Read(ref _session).Messages, text);
         var estimate = budget.Measure(history, text);
         var userText = text.Trim();
 
         var messages = new List<LlmMessage> { new(PiConstants.Roles.System, settings.SystemPrompt) };
         foreach (var message in history)
         {
-            messages.Add(new LlmMessage(message.Role, message.Text));
+            messages.Add(ToLlmMessage(message));
         }
 
         messages.Add(new LlmMessage(PiConstants.Roles.User, userText));
@@ -252,6 +262,10 @@ public sealed class AgentOrchestrator(
             }
 
             messages.Add(new LlmMessage(PiConstants.Roles.Assistant, string.Empty, ToolCalls: calls));
+            working.Add(SessionMessage.Create(
+                PiConstants.Roles.Assistant,
+                string.Empty,
+                toolCalls: calls.Select(ToSessionToolCall).ToList()));
 
             foreach (var call in calls)
             {
@@ -266,7 +280,8 @@ public sealed class AgentOrchestrator(
                 var resultText = result.DisplayText;
                 working.Add(SessionMessage.Create(
                     PiConstants.Roles.Tool,
-                    string.Format(PiConstants.Prompt.ToolResultTemplate, call.Name, resultText)));
+                    string.Format(PiConstants.Prompt.ToolResultTemplate, call.Name, resultText),
+                    toolCallId: call.Id));
                 messages.Add(new LlmMessage(PiConstants.Roles.Tool, resultText, call.Id));
                 executedTools++;
             }
@@ -299,9 +314,22 @@ public sealed class AgentOrchestrator(
         }
 
         working.Add(SessionMessage.Create(PiConstants.Roles.Assistant, response.ToString()));
-        _session.Messages.Clear();
-        _session.Messages.AddRange(working);
+        var current = Volatile.Read(ref _session);
+        Volatile.Write(ref _session, current with { Messages = [.. working] });
     }
+
+    private static LlmMessage ToLlmMessage(SessionMessage message) =>
+        new(
+            message.Role,
+            message.Text,
+            message.ToolCallId,
+            message.ToolCalls?.Select(ToLlmToolCall).ToList());
+
+    private static LlmToolCall ToLlmToolCall(SessionToolCall call) =>
+        new(call.Name, call.ArgumentsJson, call.Id);
+
+    private static SessionToolCall ToSessionToolCall(LlmToolCall call) =>
+        new(call.Id ?? string.Empty, call.Name, call.ArgumentsJson);
 
     private static LlmToolDefinition ToDefinition(IAgentTool tool) =>
         new(
