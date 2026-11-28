@@ -47,6 +47,13 @@ public static partial class PiConstants
         public const int MaxSearchFileBytes = 1_000_000;
         public const int NdjsonChunkSize = 4096;
         public const int MaxNdjsonLineLength = 1_048_576;
+        // Filtro barato antes de medir UTF-8: um char UTF-16 pode virar até 3 bytes.
+        public const int MaxUtf8BytesPerChar = 3;
+        public const int DefaultListDepth = 1;
+        public const int MaxListDepth = 3;
+        public const int MinListEntries = 1;
+        public const int MaxListEntries = 200;
+        public const int ListIndentSpaces = 2;
         public const int ExpectedSingleOccurrence = 1;
     }
 
@@ -77,10 +84,12 @@ public static partial class PiConstants
         public const string ReadFileName = "read_file";
         public const string EditFileName = "edit_file";
         public const string SearchCodeName = "search_code";
+        public const string ListDirectoryName = "list_directory";
         public const string ExecuteShellName = "execute_shell";
         public static readonly string[] ReadPrefixes = ["leia ", "read "];
         public static readonly string[] EditPrefixes = ["edite ", "edit "];
         public static readonly string[] SearchPrefixes = ["procure ", "busque "];
+        public static readonly string[] ListPrefixes = ["liste ", "list ", "dir "];
         public static readonly string[] ShellPrefixes = ["execute ", "shell "];
         public static readonly string[] IgnoredDirectories =
             [".git", "node_modules", "artifacts", "bin", "obj", "dist", ".vs", "coverage"];

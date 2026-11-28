@@ -44,6 +44,7 @@ public sealed class CommandDispatcher(
                 }
                 catch (InvalidDataException ex)
                 {
+                    logger.LogError(ex, PiConstants.Messages.LogNdjsonLineTooLong);
                     await PublishErrorAsync(string.Empty, ErrorCodes.InvalidMessage, ex.Message);
                     break;
                 }

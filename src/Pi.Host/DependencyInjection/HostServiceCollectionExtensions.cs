@@ -55,6 +55,7 @@ public static class HostServiceCollectionExtensions
         HostConfiguration configuration)
     {
         services.AddSingleton<IAgentTool, SearchCodeTool>();
+        services.AddSingleton<IAgentTool, ListDirectoryTool>();
         services.AddSingleton<IAgentTool, ReadFileTool>();
         services.AddSingleton<IAgentTool, EditFileTool>();
         services.AddSingleton<IAgentTool, ExecuteShellTool>();

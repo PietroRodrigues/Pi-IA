@@ -45,4 +45,45 @@ public class NdjsonReaderTests
         Assert.Equal("final", await sut.ReadLineAsync());
         Assert.Null(await sut.ReadLineAsync());
     }
+
+    [Fact]
+    public async Task ReadLineAsync_LinhaLongaComNewlineNoMesmoChunk_LancaInvalidDataException()
+    {
+        using var input = new StringReader($"{new string('a', 100)}\n");
+        var sut = new NdjsonReader(input, maxLineLength: 10);
+
+        var error = await Assert.ThrowsAsync<InvalidDataException>(async () => await sut.ReadLineAsync());
+
+        Assert.Contains("bytes", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ReadLineAsync_MultibyteAcimaDoLimiteEmBytes_LancaInvalidDataException()
+    {
+        using var input = new StringReader($"{new string('\u00E9', 6)}\n");
+        var sut = new NdjsonReader(input, maxLineLength: 10);
+
+        await Assert.ThrowsAsync<InvalidDataException>(async () => await sut.ReadLineAsync());
+    }
+
+    [Fact]
+    public async Task ReadLineAsync_DuasLinhasMultibyteNoMesmoChunk_NaoAcumulaBytes()
+    {
+        var line = new string('\u00E9', 5);
+        using var input = new StringReader($"{line}\n{line}\n");
+        var sut = new NdjsonReader(input, maxLineLength: 10);
+
+        Assert.Equal(line, await sut.ReadLineAsync());
+        Assert.Equal(line, await sut.ReadLineAsync());
+        Assert.Null(await sut.ReadLineAsync());
+    }
+
+    [Fact]
+    public async Task ReadLineAsync_UltimaLinhaSemNewlineAcimaDoLimiteEmBytes_LancaInvalidDataException()
+    {
+        using var input = new StringReader(new string('\u00E9', 6));
+        var sut = new NdjsonReader(input, maxLineLength: 10);
+
+        await Assert.ThrowsAsync<InvalidDataException>(async () => await sut.ReadLineAsync());
+    }
 }

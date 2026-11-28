@@ -43,6 +43,8 @@ public static partial class PiConstants
         public const string File = "file";
         public const string Offset = "offset";
         public const string Limit = "limit";
+        public const string Depth = "depth";
+        public const string Pattern = "pattern";
         public const string MaxBytes = "maxBytes";
         public const string NotFoundMarker = "not found";
         public static readonly string[] PathPropertyNames = [Path, FilePath, File];
@@ -60,6 +62,21 @@ public static partial class PiConstants
                 "maxBytes": { "type": "integer", "minimum": 256 }
               },
               "required": ["path"]
+            }
+            """;
+
+        public const string ListDirectoryDescription =
+            "Lista arquivos e pastas do workspace, com profundidade e glob opcionais.";
+
+        public const string ListDirectorySchema = """
+            {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "description": "Caminho relativo à raiz do workspace." },
+                "depth": { "type": "integer", "minimum": 0, "maximum": 3, "default": 1 },
+                "pattern": { "type": "string", "description": "Glob simples (* e ?) aplicado aos nomes." }
+              },
+              "required": []
             }
             """;
     }

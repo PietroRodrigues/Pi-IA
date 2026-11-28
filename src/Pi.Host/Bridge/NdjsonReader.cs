@@ -26,7 +26,13 @@ public sealed class NdjsonReader(
 
                 if (_end == 0)
                 {
-                    return _line.Length == 0 ? null : TakeLine();
+                    if (_line.Length == 0)
+                    {
+                        return null;
+                    }
+
+                    EnsureWithinLimit();
+                    return TakeLine();
                 }
             }
 
@@ -34,19 +40,30 @@ public sealed class NdjsonReader(
             if (newline >= 0)
             {
                 _line.Append(_chunk, _start, newline - _start);
+                EnsureWithinLimit();
                 _start = newline + 1;
                 return TakeLine();
             }
 
             _line.Append(_chunk, _start, _end - _start);
             _start = _end;
+            EnsureWithinLimit();
+        }
+    }
 
-            if (_line.Length > maxLineLength)
-            {
-                throw new InvalidDataException(string.Format(
-                    PiConstants.Messages.NdjsonLineTooLongTemplate,
-                    maxLineLength));
-            }
+    // Mede apenas o conteúdo da linha atual, em bytes UTF-8, nos três caminhos de saída.
+    private void EnsureWithinLimit()
+    {
+        if (_line.Length * PiConstants.Limits.MaxUtf8BytesPerChar <= maxLineLength)
+        {
+            return;
+        }
+
+        if (Encoding.UTF8.GetByteCount(_line.ToString()) > maxLineLength)
+        {
+            throw new InvalidDataException(string.Format(
+                PiConstants.Messages.NdjsonLineTooLongTemplate,
+                maxLineLength));
         }
     }
 

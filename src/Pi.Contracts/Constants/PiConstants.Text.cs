@@ -40,6 +40,12 @@ public static partial class PiConstants
         public const string EmptyFieldTemplate = "O campo '{0}' não pode ser vazio.";
         public const string DirectoryInsteadOfFileTemplate = "O caminho é um diretório, não um arquivo: {0}";
         public const string FileNotFoundTemplate = "Arquivo não encontrado: {0}";
+        public const string DirectoryNotFoundTemplate = "Diretório não encontrado: {0}";
+        public const string FileInsteadOfDirectoryTemplate = "O caminho é um arquivo, não um diretório: {0}";
+        public const string DirectoryEmpty = "Nenhum item encontrado.";
+        public const string ListEntryTemplate = "{0}{1}";
+        public const string ListTruncatedTemplate = "... limite de {0} itens atingido.";
+        public const string InvalidPatternTemplate = "Padrão glob inválido: {0}";
         public const string ReadByteLimitTemplate = "... limite de {0} bytes atingido.";
         public const string ReadFileLineTemplate = "{0,5}: {1}{2}";
         public const string EditFormat = "Formato: edite <arquivo> | <texto antigo> => <texto novo>";
@@ -79,7 +85,7 @@ public static partial class PiConstants
         public const string InvalidJsonTemplate = "JSON inválido: {0}";
         public const string UnknownCommandTemplate = "Comando desconhecido: {0}";
         public const string InvalidPayloadTemplate = "Payload inválido: {0}";
-        public const string NdjsonLineTooLongTemplate = "Linha NDJSON acima do limite de {0} caracteres.";
+        public const string NdjsonLineTooLongTemplate = "Linha NDJSON acima do limite de {0} bytes.";
         public const string LogLineTemplate = "{0} [{1}] {2}: {3}";
 
         // Mensagens de log: os placeholders nomeados são preservados para o ILogger.
@@ -97,6 +103,7 @@ public static partial class PiConstants
         public const string LogOllamaStarted = "Ollama iniciado em segundo plano via {Executable}";
         public const string LogSearchReadFailure = "Não foi possível ler {File}";
         public const string LogBridgeReadFailure = "Falha ao ler stdin da ponte";
+        public const string LogNdjsonLineTooLong = "Linha NDJSON acima do limite de bytes";
         public const string LogDispatchFailure = "Falha ao despachar {Type}";
     }
 }
