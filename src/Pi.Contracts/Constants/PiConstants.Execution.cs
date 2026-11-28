@@ -54,6 +54,8 @@ public static partial class PiConstants
         public const int MinListEntries = 1;
         public const int MaxListEntries = 200;
         public const int ListIndentSpaces = 2;
+        public const int MinimumLineNumber = 1;
+        public const int DiffContextLines = 3;
         public const int ExpectedSingleOccurrence = 1;
     }
 
@@ -83,6 +85,9 @@ public static partial class PiConstants
     {
         public const string ReadFileName = "read_file";
         public const string EditFileName = "edit_file";
+        public const string ReplaceTextOperation = "replace_text";
+        public const string ReplaceLinesOperation = "replace_lines";
+        public const string CreateFileOperation = "create_file";
         public const string SearchCodeName = "search_code";
         public const string ListDirectoryName = "list_directory";
         public const string ExecuteShellName = "execute_shell";

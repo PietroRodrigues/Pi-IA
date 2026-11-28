@@ -45,6 +45,13 @@ public static partial class PiConstants
         public const string Limit = "limit";
         public const string Depth = "depth";
         public const string Pattern = "pattern";
+        public const string Operation = "operation";
+        public const string OldText = "old_text";
+        public const string NewText = "new_text";
+        public const string StartLine = "start_line";
+        public const string EndLine = "end_line";
+        public const string NewContent = "new_content";
+        public const string Overwrite = "overwrite";
         public const string MaxBytes = "maxBytes";
         public const string NotFoundMarker = "not found";
         public static readonly string[] PathPropertyNames = [Path, FilePath, File];
@@ -77,6 +84,31 @@ public static partial class PiConstants
                 "pattern": { "type": "string", "description": "Glob simples (* e ?) aplicado aos nomes." }
               },
               "required": []
+            }
+            """;
+
+        public const string EditFileDescription =
+            "Edita arquivos do workspace: substitui texto, substitui linhas ou cria um arquivo.";
+
+        public const string EditFileSchema = """
+            {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "description": "Caminho relativo à raiz do workspace." },
+                "operation": {
+                  "type": "string",
+                  "enum": ["replace_text", "replace_lines", "create_file"],
+                  "default": "replace_text"
+                },
+                "old_text": { "type": "string" },
+                "new_text": { "type": "string" },
+                "start_line": { "type": "integer", "minimum": 1 },
+                "end_line": { "type": "integer", "minimum": 1 },
+                "new_content": { "type": "string" },
+                "content": { "type": "string" },
+                "overwrite": { "type": "boolean", "default": false }
+              },
+              "required": ["path"]
             }
             """;
     }
